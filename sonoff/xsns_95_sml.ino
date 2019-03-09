@@ -610,8 +610,10 @@ int64_t value;
     } else {
         if (!(type&0xf0)) {
             // octet string serial number
-            // serial number => 24 bit - 24 bit
+            // no coding found on the net
+            // up to now 2 types identified on Hager
             if (len==9) {
+              // serial number on hager => 24 bit - 24 bit
                 cp++;
                 uint32_t s1,s2;
                 s1=*cp<<16|*(cp+1)<<8|*(cp+2);
@@ -619,6 +621,7 @@ int64_t value;
                 s2=*cp<<16|*(cp+1)<<8|*(cp+2);
                 sprintf(&meter_id[0][0],"%u-%u",s1,s2);
             } else {
+                // server id on hager
                 char *str=&meter_id[0][0];
                 for (type=0; type<len; type++) {
                     sprintf(str,"%02x",*cp++);
