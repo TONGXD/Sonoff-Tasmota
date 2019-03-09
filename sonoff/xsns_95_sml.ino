@@ -545,6 +545,7 @@ uint8_t dchars[16];
 
 
 // get sml binary value
+// not defined for unsigned >0x7fff ffff ffff ffff (should never happen)
 int64_t sml_getvalue(unsigned char *cp,uint8_t index) {
 short len,unit,scaler,type;
 int64_t value;
