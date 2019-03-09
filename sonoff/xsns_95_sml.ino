@@ -567,31 +567,94 @@ int64_t value;
     // get value
     type=*cp&0x70;
     len=*cp&0x0f;
-    type|=len-1;
     cp++;
+#if 1
+    if (type==0x50 || type==0x60) {
+        // shift into 64 bit
+        uint64_t uvalue=0;
+        uint8_t nlen=len;
+        while (--nlen) {
+            uvalue<<=8;
+            uvalue|=*cp++;
+        }
+        if (type==0x50) {
+            // signed
+            switch (len-1) {
+                case 1:
+                    // byte
+                    value=(signed char)uvalue;
+                    break;
+                case 2:
+                    // signed 16 bit
+                    value=(int16_t)uvalue;
+                    break;
+                case 3:
+                case 4:
+                    // signed 32 bit
+                    value=(int32_t)uvalue;
+                    break;
+                case 5:
+                case 6:
+                case 7:
+                case 8:
+                    // signed 64 bit
+                    value=(int64_t)uvalue;
+                    break;
+            }
+        } else {
+            // unsigned
+            value=uvalue;
+        }
+
+    } else {
+        if (!(type&0xf0)) {
+            // octet string serial number
+            // serial number => 24 bit - 24 bit
+            if (len==9) {
+                cp++;
+                uint32_t s1,s2;
+                s1=*cp<<16|*(cp+1)<<8|*(cp+2);
+                cp+=4;
+                s2=*cp<<16|*(cp+1)<<8|*(cp+2);
+                sprintf(&meter_id[0][0],"%u-%u",s1,s2);
+            } else {
+                char *str=&meter_id[0][0];
+                for (type=0; type<len; type++) {
+                    sprintf(str,"%02x",*cp++);
+                    str+=2;
+                }
+            }
+            value=0;
+        } else {
+            value=999999;
+            scaler=0;
+        }
+    }
+#else
+    type|=len-1;
     switch (type) {
             // int8
             value=(signed char)*cp;
             break;
         case 0x52:
             // int16;
-            value=((int16_t)(*cp<<8))|*(cp+1);
+            value=((int16_t)*cp<<8)|*(cp+1);
             break;
         case 0x53:
             // int32; // len 3
-            value=((int32_t)(*cp<<16))|((int32_t)*(cp+1)<<8)|(*(cp+3));
+            value=((int32_t)*cp<<16)|((int32_t)*(cp+1)<<8)|(*(cp+2));
             break;
         case 0x54:
             // int32;
-            value=((int32_t)(*cp<<24))|((int32_t)*(cp+1)<<16)|((int32_t)*(cp+2)<<8)|(*(cp+3));
+            value=((int32_t)*cp<<24)|((int32_t)*(cp+1)<<16)|((int32_t)*(cp+2)<<8)|(*(cp+3));
             break;
         case 0x55:
             // int64; len 5
-            value=((int64_t)(*cp<<32))|((int64_t)*(cp+1)<<24)|((int64_t)*(cp+2)<<16)|((int64_t)*(cp+3)<<8)|(*(cp+4));
+            value=((int64_t)*cp<<32)|((int64_t)*(cp+1)<<24)|((int64_t)*(cp+2)<<16)|((int64_t)*(cp+3)<<8)|(*(cp+4));
             break;
         case 0x58:
             // int64;
-            value=((int64_t)(*cp<<56))|((int64_t)*(cp+1)<<48)|((int64_t)*(cp+2)<<40)|((int64_t)*(cp+3)<<32)|((int64_t)*(cp+4)<<24)|((int64_t)*(cp+5)<<16)|((int64_t)*(cp+6)<<8)|(*(cp+7));
+            value=((int64_t)*cp<<56)|((int64_t)*(cp+1)<<48)|((int64_t)*(cp+2)<<40)|((int64_t)*(cp+3)<<32)|((int64_t)*(cp+4)<<24)|((int64_t)*(cp+5)<<16)|((int64_t)*(cp+6)<<8)|(*(cp+7));
             break;
 
         case 0x61:
@@ -644,6 +707,7 @@ int64_t value;
           }
           break;
     }
+#endif
 
     if (scaler==-1) {
         value/=10;
