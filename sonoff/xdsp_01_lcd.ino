@@ -80,8 +80,13 @@ void LcdInitDriver(void)
 
 void LcdDrawStringAt(void)
 {
-  lcd->setCursor(dsp_x, dsp_y);
-  lcd->print(dsp_str);
+  if (dsp_flag) {
+    lcd->setCursor(dsp_x-1, dsp_y-1);
+    lcd->print(dsp_str);
+  } else {
+    lcd->setCursor(dsp_x, dsp_y);
+    lcd->print(dsp_str);
+  }
 }
 
 void LcdDisplayOnOff(uint8_t on)
