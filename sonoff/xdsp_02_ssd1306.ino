@@ -76,7 +76,7 @@ void SSD1306InitDriver()
 #ifdef SHOW_SPLASH
     renderer->setTextSize(2);
     renderer->setCursor(20,20);
-    renderer->println((char*)(const char*)"Adafruit");
+    renderer->println(F("Adafruit"));
     renderer->Updateframe();
     renderer->DisplayOnff(1);
 #endif

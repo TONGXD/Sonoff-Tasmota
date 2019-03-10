@@ -95,7 +95,7 @@ void ILI9488_InitDriver()
     // Welcome text
     renderer->setTextFont(2);
     renderer->setTextColor(ILI9488_WHITE,ILI9488_BLACK);
-    renderer->DrawStringAt(50, 50, (char*)(const char*)"ILI9488 TFT Display!", ILI9488_WHITE,0);
+    renderer->DrawStringAt(50, 50, F("ILI9488 TFT Display!"), ILI9488_WHITE,0);
     delay(1000);
 
     //renderer->drawRGBBitmap(100,100, picture,51,34);
