@@ -426,7 +426,7 @@ void PN532_ScanForTag(void)
       found=compare_tag(uid,uid_len);
       if (found&0x8000) {
         if (!mtag_active) {
-          snprintf_P(log_data, sizeof(log_data),(const char*)"mastertag found => wait for tag");
+          snprintf_P(log_data, sizeof(log_data),F("mastertag found => wait for tag"));
           AddLog(LOG_LEVEL_INFO);
           mtag_active=1;
         }
