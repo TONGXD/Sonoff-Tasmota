@@ -40,6 +40,10 @@ die älteren werden nicht mehr unterstützt.
 // Baudrate des D0 Ausgangs, sollte bei den meisten Zählern 9600 sein
 #define SML_BAUDRATE 9600
 
+// send this for every SML_Show
+//#define SML_SEND_SEQ
+
+
 // support für mehr als 2 Meter mit spezieller Tasmota Serial Version
 // dazu muss der neue Treiber => TasmotaSerial-2.3.0 ebenfalls kopiert werden
 
@@ -1053,6 +1057,25 @@ void SML_Immediate_MQTT(const char *mp,uint8_t index,uint8_t mindex) {
   }
 }
 
+#ifdef SML_SEND_SEQ
+void SendSeq(void) {
+uint8_t sequence[]={0x2F,0x3F,0x21,0x0D,0x0A,0};
+uint8_t *ucp;
+  while (*ucp) {
+    Serial.write(CalcEvenParity(*ucp++));
+  }
+}
+uint8_t CalcEvenParity(uint8_t data) {
+uint8_t parity=0;
+
+  while(data) {
+    parity^=(data &1);
+    ata>>=1;
+  }
+  return parity;
+}
+#endif
+
 
 // web + jason interface
 void SML_Show(boolean json) {
@@ -1064,6 +1087,12 @@ void SML_Show(boolean json) {
   int8_t index=0,mid=0;
   char *mp=(char*)meter;
   char *cp;
+
+#if METERS_USED==1
+#ifdef SML_SEND_SEQ
+    SendSeq();
+#endif
+#endif
 
     int8_t lastmind=((*mp)&7)-1;
     if (lastmind<0 || lastmind>=METERS_USED) lastmind=0;
