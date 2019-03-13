@@ -41,7 +41,7 @@ die älteren werden nicht mehr unterstützt.
 #define SML_BAUDRATE 9600
 
 // send this for every SML_Show
-//#define SML_SEND_SEQ
+#define SML_SEND_SEQ
 
 
 // support für mehr als 2 Meter mit spezieller Tasmota Serial Version
@@ -1062,15 +1062,19 @@ void SendSeq(void) {
 uint8_t sequence[]={0x2F,0x3F,0x21,0x0D,0x0A,0};
 uint8_t *ucp;
   while (*ucp) {
-    Serial.write(CalcEvenParity(*ucp++));
+    uint8_t iob=*ucp++;
+    iob|=(CalcEvenParity(iob)<<7);
+    Serial.write(iob);
   }
 }
+
+// for odd init with 1
 uint8_t CalcEvenParity(uint8_t data) {
 uint8_t parity=0;
 
   while(data) {
     parity^=(data &1);
-    ata>>=1;
+    data>>=1;
   }
   return parity;
 }
