@@ -41,7 +41,7 @@ die älteren werden nicht mehr unterstützt.
 #define SML_BAUDRATE 9600
 
 // send this for every SML_Show
-#define SML_SEND_SEQ
+//#define SML_SEND_SEQ
 
 
 // support für mehr als 2 Meter mit spezieller Tasmota Serial Version
@@ -1057,30 +1057,6 @@ void SML_Immediate_MQTT(const char *mp,uint8_t index,uint8_t mindex) {
   }
 }
 
-#ifdef SML_SEND_SEQ
-void SendSeq(void) {
-uint8_t sequence[]={0x2F,0x3F,0x21,0x0D,0x0A,0};
-uint8_t *ucp=sequence;
-  while (*ucp) {
-    uint8_t iob=*ucp++;
-    iob|=(CalcEvenParity(iob)<<7);
-    Serial.write(iob);
-  }
-}
-
-// for odd init with 1
-uint8_t CalcEvenParity(uint8_t data) {
-uint8_t parity=0;
-
-  while(data) {
-    parity^=(data &1);
-    data>>=1;
-  }
-  return parity;
-}
-#endif
-
-
 // web + jason interface
 void SML_Show(boolean json) {
   int8_t count,mindex;
@@ -1091,12 +1067,6 @@ void SML_Show(boolean json) {
   int8_t index=0,mid=0;
   char *mp=(char*)meter;
   char *cp;
-
-#if METERS_USED==1
-#ifdef SML_SEND_SEQ
-    SendSeq();
-#endif
-#endif
 
     int8_t lastmind=((*mp)&7)-1;
     if (lastmind<0 || lastmind>=METERS_USED) lastmind=0;
@@ -1226,6 +1196,37 @@ void SML_Init(void) {
   }
 }
 
+#ifdef SML_SEND_SEQ
+#define SML_SEQ_PERIOD 5
+uint8_t sml_seq_cnt;
+void SendSeq(void) {
+  sml_seq_cnt++;
+  if (sml_seq_cnt>SML_SEQ_PERIOD) {
+    sml_seq_cnt=0;
+    // send sequence every N Seconds
+    uint8_t sequence[]={0x2F,0x3F,0x21,0x0D,0x0A,0};
+    uint8_t *ucp=sequence;
+    while (*ucp) {
+      uint8_t iob=*ucp++;
+      // for no parity disable next line
+      iob|=(CalcEvenParity(iob)<<7);
+      Serial.write(iob);
+    }
+  }
+}
+
+// for odd parity init with 1
+uint8_t CalcEvenParity(uint8_t data) {
+uint8_t parity=0;
+
+  while(data) {
+    parity^=(data &1);
+    data>>=1;
+  }
+  return parity;
+}
+#endif
+
 bool XSNS_95_cmd(void) {
   boolean serviced = true;
   const char S_JSON_SML[] = "{\"" D_CMND_SENSOR "%d\":%s:%d}";
@@ -1256,6 +1257,11 @@ boolean Xsns95(byte function) {
         if (dump2log) Dump2log();
         else SML_Poll();
         break;
+#ifdef SML_SEND_SEQ
+      case FUNC_EVERY_SECOND:
+        SendSeq();
+        break;
+#endif
       case FUNC_JSON_APPEND:
         SML_Show(1);
         break;
