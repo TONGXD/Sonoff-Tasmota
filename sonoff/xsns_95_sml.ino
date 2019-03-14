@@ -1060,7 +1060,7 @@ void SML_Immediate_MQTT(const char *mp,uint8_t index,uint8_t mindex) {
 #ifdef SML_SEND_SEQ
 void SendSeq(void) {
 uint8_t sequence[]={0x2F,0x3F,0x21,0x0D,0x0A,0};
-uint8_t *ucp;
+uint8_t *ucp=sequence;
   while (*ucp) {
     uint8_t iob=*ucp++;
     iob|=(CalcEvenParity(iob)<<7);
