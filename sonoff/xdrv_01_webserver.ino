@@ -1983,7 +1983,7 @@ void DebugFreeMem(void)
 
 #endif  // ARDUINO_ESP8266_RELEASE_2_x_x
 
-#define SEND_MAIL_MINRAM 20*1024
+#define SEND_MAIL_MINRAM 16*1024
 
 uint16_t SendMail(char *buffer) {
   uint16_t count;
@@ -2001,7 +2001,7 @@ uint16_t SendMail(char *buffer) {
 
   DebugFreeMem();
 
-// this does not work as expected ???
+// return if not enough memory
   uint16_t mem=ESP.getFreeHeap();
   if (mem<SEND_MAIL_MINRAM) {
     return 5;
