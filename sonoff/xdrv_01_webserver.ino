@@ -1983,7 +1983,7 @@ void DebugFreeMem(void)
 
 #endif  // ARDUINO_ESP8266_RELEASE_2_x_x
 
-#define SEND_MAIL_MINRAM 22*1024
+#define SEND_MAIL_MINRAM 20*1024
 
 uint16_t SendMail(char *buffer) {
   uint16_t count;
