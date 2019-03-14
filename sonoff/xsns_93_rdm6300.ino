@@ -1,7 +1,7 @@
 /*
   xsns_rdm6300.ino - Support for RDM6300 NFC Tag Reader
 
-  Copyright (C) 2019  Theo Arends
+  Copyright (C) 2019  Theo Arends and Gerhard Mutz
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

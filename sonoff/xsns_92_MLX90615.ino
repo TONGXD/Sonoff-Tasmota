@@ -1,7 +1,7 @@
 /*
   xsns_92_MLX90615.ino - Support for MLX ir temperature sensor
 
-  Copyright (C) 2019  Theo Arends
+  Copyright (C) 2019  Theo Arends and Gerhard Mutz
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
