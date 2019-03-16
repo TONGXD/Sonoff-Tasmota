@@ -706,7 +706,6 @@ double map_double(double x, double in_min, double in_max, double out_min, double
 #define WEB_HANDLE_RULES "s10"
 #define D_CONFIGURE_RULES "Configure rule vars"
 #define D_RULEVARS "setup rule vars"
-#define D_RULES_MEM1 "mem1"
 
 const char S_CONFIGURE_RULES[] PROGMEM = D_CONFIGURE_RULES;
 
