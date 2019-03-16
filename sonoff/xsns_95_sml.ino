@@ -40,7 +40,7 @@ die älteren werden nicht mehr unterstützt.
 // Baudrate des D0 Ausgangs, sollte bei den meisten Zählern 9600 sein
 #define SML_BAUDRATE 9600
 
-// send this for every SML_Show
+// send this every N seconds
 //#define SML_SEND_SEQ
 
 

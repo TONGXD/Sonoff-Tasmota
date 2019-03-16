@@ -696,6 +696,79 @@ double map_double(double x, double in_min, double in_max, double out_min, double
  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+
+#define USE_RULES_GUI
+
+
+#ifdef USE_WEBSERVER
+#ifdef USE_RULES_GUI
+
+#define WEB_HANDLE_RULES "s10"
+#define D_CONFIGURE_RULES "Configure rule vars"
+#define D_RULEVARS "setup rule vars"
+#define D_RULES_MEM1 "mem1"
+
+const char S_CONFIGURE_RULES[] PROGMEM = D_CONFIGURE_RULES;
+
+const char HTTP_BTN_MENU_RULES[] PROGMEM =
+  "<br/><form action='" WEB_HANDLE_RULES "' method='get'><button>" D_CONFIGURE_RULES "</button></form>";
+
+const char HTTP_FORM_RULES[] PROGMEM =
+    "<fieldset><legend><b>&nbsp;" D_RULEVARS "&nbsp;</b></legend>"
+    "<form method='post' action='" WEB_HANDLE_RULES "'>"
+    "<br/><b>" "mem1" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p1' name='p1' placeholder='0' value='{1'><br/>"
+    "<br/><b>" "mem2" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p2' name='p2' placeholder='0' value='{2'><br/>"
+    "<br/><b>" "mem3" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p3' name='p3' placeholder='0' value='{3'><br/>"
+    "<br/><b>" "mem4" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p4' name='p4' placeholder='0' value='{4'><br/>"
+    "<br/><b>" "mem5" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p5' name='p5' placeholder='0' value='{5'><br/>";
+
+void HandleRulesAction(void)
+{
+    if (!HttpCheckPriviledgedAccess()) { return; }
+
+    AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_CONFIGURE_RULES);
+
+    if (WebServer->hasArg("save")) {
+      RuleSaveSettings();
+      HandleConfiguration();
+      return;
+    }
+
+    String page = FPSTR(HTTP_HEAD);
+    page.replace(F("{v}"), FPSTR(D_CONFIGURE_RULES));
+    page += FPSTR(HTTP_HEAD_STYLE);
+    page += FPSTR(HTTP_FORM_RULES);
+
+    page.replace("{1", String(Settings.mems[0]));
+    page.replace("{2", String(Settings.mems[1]));
+    page.replace("{3", String(Settings.mems[2]));
+    page.replace("{4", String(Settings.mems[3]));
+    page.replace("{5", String(Settings.mems[4]));
+
+    page += FPSTR(HTTP_FORM_END);
+    page += FPSTR(HTTP_BTN_CONF);
+    ShowPage(page);
+  }
+
+
+void RuleSaveSettings(void)
+{
+  char tmp[100];
+  uint8_t index;
+  for (index=0; index<MAX_RULE_MEMS; index++) {
+    char pind[3]={'p','1',0};
+    pind[1]=0x30+index+1;
+    WebGetArg(pind, tmp, sizeof(tmp));
+    if (tmp && *tmp) {
+      strlcpy(Settings.mems[index],tmp, sizeof(Settings.mems[index]));
+    }
+  }
+
+}
+
+#endif
+#endif
+
 /*********************************************************************************************\
  * Interface
 \*********************************************************************************************/
@@ -726,6 +799,16 @@ boolean Xdrv10(byte function)
     case FUNC_RULES_PROCESS:
       result = RulesProcess();
       break;
+#ifdef USE_WEBSERVER
+#ifdef USE_RULES_GUI
+    case FUNC_WEB_ADD_BUTTON:
+      strncat_P(mqtt_data, HTTP_BTN_MENU_RULES, sizeof(mqtt_data) - strlen(mqtt_data) -1);
+      break;
+    case FUNC_WEB_ADD_HANDLER:
+      WebServer->on("/" WEB_HANDLE_RULES, HandleRulesAction);
+      break;
+#endif  // USE_RULES_GUI
+#endif // USE_WEBSERVER
   }
   return result;
 }
