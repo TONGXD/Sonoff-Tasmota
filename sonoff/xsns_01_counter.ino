@@ -23,6 +23,9 @@
 
 #define XSNS_01             1
 
+#define GAS_COUNTER_MODE
+
+
 unsigned long last_counter_timer[MAX_COUNTERS]; // Last counter time in micro seconds
 
 void CounterUpdate(byte index)
@@ -33,7 +36,18 @@ void CounterUpdate(byte index)
     if (bitRead(Settings.pulse_counter_type, index -1)) {
       RtcSettings.pulse_counter[index -1] = counter_debounce_time;
     } else {
+#ifdef GAS_COUNTER_MODE
+      if (index==1) {
+        delayMicroseconds(100);
+        if (!digitalRead(pin[GPIO_CNTR1])) {
+          RtcSettings.pulse_counter[index -1]++;
+        }
+      } else {
+        RtcSettings.pulse_counter[index -1]++;
+      }
+#else
       RtcSettings.pulse_counter[index -1]++;
+#endif
     }
 
 //    snprintf_P(log_data, sizeof(log_data), PSTR("CNTR: Interrupt %d"), index);
