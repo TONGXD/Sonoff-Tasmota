@@ -38,7 +38,7 @@ void CounterUpdate(byte index)
     } else {
 #ifdef GAS_COUNTER_MODE
       if (index==1) {
-        delayMicroseconds(100);
+        delayMicroseconds(5000);
         if (!digitalRead(pin[GPIO_CNTR1])) {
           RtcSettings.pulse_counter[index -1]++;
         }
