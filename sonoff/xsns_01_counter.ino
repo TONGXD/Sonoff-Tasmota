@@ -23,7 +23,10 @@
 
 #define XSNS_01             1
 
-#define GAS_COUNTER_MODE
+
+// debouncing for switch open in gas counters
+// set as low as possible
+#define GAS_COUNTER_MODE 5000
 
 
 unsigned long last_counter_timer[MAX_COUNTERS]; // Last counter time in micro seconds
@@ -38,7 +41,7 @@ void CounterUpdate(byte index)
     } else {
 #ifdef GAS_COUNTER_MODE
       if (index==1) {
-        delayMicroseconds(5000);
+        delayMicroseconds(GAS_COUNTER_MODE);
         if (!digitalRead(pin[GPIO_CNTR1])) {
           RtcSettings.pulse_counter[index -1]++;
         }
