@@ -29,6 +29,7 @@
 #define GAS_COUNTER_MODE 5000
 #define GAS_SCALEFAC 100
 #define GAS_DECIMALS 2
+#define GAS_LED 2
 
 
 unsigned long last_counter_timer[MAX_COUNTERS]; // Last counter time in micro seconds
@@ -173,6 +174,19 @@ boolean Xsns01(byte function)
   boolean result = false;
 
   switch (function) {
+
+#ifdef GAS_LED
+// debug wemos d1 led
+    case FUNC_EVERY_100_MSECOND:
+      pinMode(GAS_LED, OUTPUT);
+      if (digitalRead(pin[GPIO_CNTR1])) {
+        digitalWrite(GAS_LED,HIGH);
+      } else {
+        digitalWrite(GAS_LED,LOW);
+      }
+      break;
+#endif
+
     case FUNC_INIT:
       CounterInit();
       break;
