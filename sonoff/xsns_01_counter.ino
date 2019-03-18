@@ -27,6 +27,8 @@
 // debouncing for switch open in gas counters
 // set as low as possible
 #define GAS_COUNTER_MODE 5000
+#define GAS_SCALEFAC 100
+#define GAS_DECIMALS 2
 
 
 unsigned long last_counter_timer[MAX_COUNTERS]; // Last counter time in micro seconds
@@ -104,7 +106,11 @@ void CounterInit(void)
 
 #ifdef USE_WEBSERVER
 const char HTTP_SNS_COUNTER[] PROGMEM =
+#ifdef GAS_COUNTER_MODE
+ "%s{s}" "Gaszähler" "%d{m}%s%s cbm{e}";
+#else
   "%s{s}" D_COUNTER "%d{m}%s%s{e}";  // {s} = <tr><th>, {m} = </th><td>, {e} = </td></tr>
+#endif
 #endif  // USE_WEBSERVER
 
 void CounterShow(boolean json)
@@ -120,7 +126,11 @@ void CounterShow(boolean json)
         dtostrfd((double)RtcSettings.pulse_counter[i] / 1000000, 6, counter);
       } else {
         dsxflg++;
+#ifdef GAS_COUNTER_MODE
+        dtostrfd((double)RtcSettings.pulse_counter[i]/(double)GAS_SCALEFAC,GAS_DECIMALS, counter);
+#else
         dtostrfd(RtcSettings.pulse_counter[i], 0, counter);
+#endif
       }
 
       if (json) {
