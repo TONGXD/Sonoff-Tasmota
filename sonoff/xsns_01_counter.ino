@@ -28,12 +28,19 @@
 // parameter is debouncing in us for switch open in gas counters
 // set as low as possible
 #define GAS_COUNTER_MODE 5000
+// gas poll mode (no irqs)
+#define GAS_POLL_MODE
 #define GAS_DECIMALS 2
 // if defined mirrors io state to a led (sampled at 100 ms intervalls)
 #define GAS_LED 2
 
 
 unsigned long last_counter_timer[MAX_COUNTERS]; // Last counter time in micro seconds
+
+#ifdef GAS_COUNTER_MODE
+uint8_t gas_debounce;
+uint8_t gas_old_state;
+#endif
 
 void CounterUpdate(byte index)
 {
@@ -44,6 +51,7 @@ void CounterUpdate(byte index)
       RtcSettings.pulse_counter[index -1] = counter_debounce_time;
     } else {
 #ifdef GAS_COUNTER_MODE
+#ifndef GAS_POLL_MODE
       if (index==1) {
         delayMicroseconds(GAS_COUNTER_MODE);
         if (!digitalRead(pin[GPIO_CNTR1])) {
@@ -52,6 +60,7 @@ void CounterUpdate(byte index)
       } else {
         RtcSettings.pulse_counter[index -1]++;
       }
+#endif
 #else
       RtcSettings.pulse_counter[index -1]++;
 #endif
@@ -101,9 +110,17 @@ void CounterInit(void)
   for (byte i = 0; i < MAX_COUNTERS; i++) {
     if (pin[GPIO_CNTR1 +i] < 99) {
       pinMode(pin[GPIO_CNTR1 +i], bitRead(counter_no_pullup, i) ? INPUT : INPUT_PULLUP);
+#ifdef GAS_POLL_MODE
+      if (i>0) attachInterrupt(pin[GPIO_CNTR1 +i], counter_callbacks[i], FALLING);
+#else
       attachInterrupt(pin[GPIO_CNTR1 +i], counter_callbacks[i], FALLING);
+#endif
     }
   }
+
+#ifdef GAS_COUNTER_MODE
+  gas_debounce=0;
+#endif
 }
 
 #ifdef USE_WEBSERVER
@@ -131,9 +148,13 @@ void CounterShow(boolean json)
       } else {
         dsxflg++;
 #ifdef GAS_COUNTER_MODE
-        uint16_t scale=1;
-        for (uint8_t s=0; s<GAS_DECIMALS; s++) scale*=10;
-        dtostrfd((double)RtcSettings.pulse_counter[i]/(double)scale,GAS_DECIMALS, counter);
+        if (i==0) {
+          uint16_t scale=1;
+          for (uint8_t s=0; s<GAS_DECIMALS; s++) scale*=10;
+          dtostrfd((double)RtcSettings.pulse_counter[i]/(double)scale,GAS_DECIMALS, counter);
+        } else {
+          dtostrfd(RtcSettings.pulse_counter[i], 0, counter);
+        }
 #else
         dtostrfd(RtcSettings.pulse_counter[i], 0, counter);
 #endif
@@ -178,6 +199,45 @@ void CounterShow(boolean json)
   }
 }
 
+
+#ifdef GAS_COUNTER_MODE
+// poll pin every 100 ms
+void GAS_Poll(void) {
+
+#ifdef GAS_POLL_MODE
+  uint8_t state;
+  gas_debounce<<=1;
+  gas_debounce|=(digitalRead(pin[GPIO_CNTR1])&1)|0xe0;
+  if (gas_debounce==0xf0) {
+    // is 1
+    state=1;
+  } else {
+    // is 0, means switch down
+    state=0;
+  }
+  if (gas_old_state!=state) {
+    // state has changed
+    gas_old_state=state;
+    if (state==0) {
+      // inc counter
+      RtcSettings.pulse_counter[0]++;
+    }
+  }
+#endif
+
+// debug wemos d1 led
+#ifdef GAS_LED
+  pinMode(GAS_LED, OUTPUT);
+  if (digitalRead(pin[GPIO_CNTR1])) {
+    digitalWrite(GAS_LED,HIGH);
+  } else {
+    digitalWrite(GAS_LED,LOW);
+  }
+#endif
+}
+#endif
+
+
 /*********************************************************************************************\
  * Interface
 \*********************************************************************************************/
@@ -188,15 +248,9 @@ boolean Xsns01(byte function)
 
   switch (function) {
 
-#ifdef GAS_LED
-// debug wemos d1 led
+#ifdef GAS_COUNTER_MODE
     case FUNC_EVERY_100_MSECOND:
-      pinMode(GAS_LED, OUTPUT);
-      if (digitalRead(pin[GPIO_CNTR1])) {
-        digitalWrite(GAS_LED,HIGH);
-      } else {
-        digitalWrite(GAS_LED,LOW);
-      }
+      GAS_Poll();
       break;
 #endif
 
