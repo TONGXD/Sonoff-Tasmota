@@ -28,7 +28,7 @@
 // parameter is debouncing in us for switch open in gas counters
 // set as low as possible
 #define GAS_COUNTER_MODE 5000
-// gas poll mode (no irqs)
+// gas poll mode every 100 ms (no irqs) GAS_COUNTER_MODE must be >0 but value is ignored
 #define GAS_POLL_MODE
 #define GAS_DECIMALS 2
 // if defined mirrors io state to a led (sampled at 100 ms intervalls)
