@@ -24,11 +24,12 @@
 #define XSNS_01             1
 
 
-// debouncing for switch open in gas counters
+// if defined shows gas meter count for counter 1
+// parameter is debouncing in us for switch open in gas counters
 // set as low as possible
 #define GAS_COUNTER_MODE 5000
-#define GAS_SCALEFAC 100
 #define GAS_DECIMALS 2
+// if defined mirrors io state to a led (sampled at 100 ms intervalls)
 #define GAS_LED 2
 
 
@@ -107,11 +108,13 @@ void CounterInit(void)
 
 #ifdef USE_WEBSERVER
 const char HTTP_SNS_COUNTER[] PROGMEM =
-#ifdef GAS_COUNTER_MODE
- "%s{s}" "Gaszähler" "%d{m}%s%s cbm{e}";
-#else
   "%s{s}" D_COUNTER "%d{m}%s%s{e}";  // {s} = <tr><th>, {m} = </th><td>, {e} = </td></tr>
+
+#ifdef GAS_COUNTER_MODE
+const char HTTP_SNS_COUNTER_GAS[] PROGMEM =
+ "%s{s}" "Gaszähler" "{m}%s%s cbm{e}";
 #endif
+
 #endif  // USE_WEBSERVER
 
 void CounterShow(boolean json)
@@ -128,7 +131,9 @@ void CounterShow(boolean json)
       } else {
         dsxflg++;
 #ifdef GAS_COUNTER_MODE
-        dtostrfd((double)RtcSettings.pulse_counter[i]/(double)GAS_SCALEFAC,GAS_DECIMALS, counter);
+        uint16_t scale=1;
+        for (uint8_t s=0; s<GAS_DECIMALS; s++) scale*=10;
+        dtostrfd((double)RtcSettings.pulse_counter[i]/(double)scale,GAS_DECIMALS, counter);
 #else
         dtostrfd(RtcSettings.pulse_counter[i], 0, counter);
 #endif
@@ -150,7 +155,15 @@ void CounterShow(boolean json)
 #endif  // USE_DOMOTICZ
 #ifdef USE_WEBSERVER
       } else {
+#ifdef GAS_COUNTER_MODE
+      if (i==0) {
+        snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SNS_COUNTER_GAS, mqtt_data, counter, (bitRead(Settings.pulse_counter_type, i)) ? " " D_UNIT_SECOND : "");
+      } else {
         snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SNS_COUNTER, mqtt_data, i +1, counter, (bitRead(Settings.pulse_counter_type, i)) ? " " D_UNIT_SECOND : "");
+      }
+#else
+        snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SNS_COUNTER, mqtt_data, i +1, counter, (bitRead(Settings.pulse_counter_type, i)) ? " " D_UNIT_SECOND : "");
+#endif
 #endif  // USE_WEBSERVER
       }
     }
