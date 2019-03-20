@@ -149,6 +149,20 @@ example:
 sendmail [smtp.gmail.com:465:user:passwd:<misterx@gmail.com>:<missesx@gmail.com>:TASMOTA mail] Hallo TASMOTA
 
 
+GAS counter mode
+=====================================
+this is a modified counter handling for counter1 with debouncing of both on and off transitions
+#define GAS_COUNTER_MODE 5000
+5000 specifies the delay in microseconds in the debounce off state (set as low as possible)
+#define GAS_POLL_MODE
+enables an non IRQ counter mode with sampling every 100ms and debouncing of 400 ms
+
+
+THINGSPEAK POST mode with WebSend
+=====================================
+#define WEBSEND_THINGSPEAK
+enables to POST values to thingspeak with WEBSEND
+
 
 
 \+ various display drivers see separate doku
