@@ -2087,6 +2087,10 @@ exit:
 
 #endif
 
+
+#define WEBSEND_THINGSPEAK
+
+
 int WebSend(char *buffer)
 {
   /* [sonoff] POWER1 ON                                               --> Sends http://sonoff/cm?cmnd=POWER1 ON
@@ -2134,8 +2138,9 @@ int WebSend(char *buffer)
       }
       nuri += F("cmnd=");
     }
-    nuri += command;
+
     String uri = UrlEncode(nuri);
+    uri += command;
 
     IPAddress host_ip;
     if (WiFi.hostByName(host, host_ip)) {
@@ -2161,9 +2166,16 @@ int WebSend(char *buffer)
         }
         url += F("\r\nConnection: close\r\n\r\n");
 
+#ifdef WEBSEND_THINGSPEAK
+        // skip until =POST for thingspeak
+        size_t len=url.length();
+        size_t pos=url.indexOf("=POST");
+        if (pos>0) {
+          url=url.substring(pos+1,len);
+        }
+#endif
 //snprintf_P(log_data, sizeof(log_data), PSTR("DBG: Url |%s|"), url.c_str());
 //AddLog(LOG_LEVEL_DEBUG);
-
         client.print(url.c_str());
         client.flush();
         client.stop();
