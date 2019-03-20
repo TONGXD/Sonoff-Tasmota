@@ -2167,11 +2167,11 @@ int WebSend(char *buffer)
         url += F("\r\nConnection: close\r\n\r\n");
 
 #ifdef WEBSEND_THINGSPEAK
-        // skip until =POST for thingspeak
+        // skip until POST for thingspeak POST
         size_t len=url.length();
-        size_t pos=url.indexOf("=POST");
+        size_t pos=url.indexOf("POST");
         if (pos>0) {
-          url=url.substring(pos+1,len);
+          url=url.substring(pos,len);
         }
 #endif
 //snprintf_P(log_data, sizeof(log_data), PSTR("DBG: Url |%s|"), url.c_str());
