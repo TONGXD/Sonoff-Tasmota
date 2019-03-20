@@ -2139,8 +2139,13 @@ int WebSend(char *buffer)
       nuri += F("cmnd=");
     }
 
+#ifdef WEBSEND_THINGSPEAK
     String uri = UrlEncode(nuri);
     uri += command;
+#else
+    uri += command;
+    String uri = UrlEncode(nuri);
+#endif
 
     IPAddress host_ip;
     if (WiFi.hostByName(host, host_ip)) {
