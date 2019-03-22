@@ -596,7 +596,6 @@ int64_t value;
     type=*cp&0x70;
     len=*cp&0x0f;
     cp++;
-#if 1
     if (type==0x50 || type==0x60) {
         // shift into 64 bit
         uint64_t uvalue=0;
@@ -661,85 +660,6 @@ int64_t value;
             scaler=0;
         }
     }
-#else
-    type|=len-1;
-    switch (type) {
-            // int8
-            value=(signed char)*cp;
-            break;
-        case 0x52:
-            // int16;
-            value=((int16_t)*cp<<8)|*(cp+1);
-            break;
-        case 0x53:
-            // int32; // len 3
-            value=((int32_t)*cp<<16)|((int32_t)*(cp+1)<<8)|(*(cp+2));
-            break;
-        case 0x54:
-            // int32;
-            value=((int32_t)*cp<<24)|((int32_t)*(cp+1)<<16)|((int32_t)*(cp+2)<<8)|(*(cp+3));
-            break;
-        case 0x55:
-            // int64; len 5
-            value=((int64_t)*cp<<32)|((int64_t)*(cp+1)<<24)|((int64_t)*(cp+2)<<16)|((int64_t)*(cp+3)<<8)|(*(cp+4));
-            break;
-        case 0x58:
-            // int64;
-            value=((int64_t)*cp<<56)|((int64_t)*(cp+1)<<48)|((int64_t)*(cp+2)<<40)|((int64_t)*(cp+3)<<32)|((int64_t)*(cp+4)<<24)|((int64_t)*(cp+5)<<16)|((int64_t)*(cp+6)<<8)|(*(cp+7));
-            break;
-
-        case 0x61:
-            // uint8;
-            value=(unsigned char)*cp;
-            break;
-        case 0x62:
-            // uint16;
-            value=((uint16_t)*cp<<8)|(*(cp+1));
-            break;
-        case 0x63:
-            // uint32; // len 3
-            value=((uint16_t)*cp<<16)|((uint16_t)*(cp+1)<<8)|(*(cp+3));
-            break;
-        case 0x64:
-            // uint32;
-            value=((uint32_t)*cp<<24)|((uint32_t)*(cp+1)<<16)|((uint32_t)*(cp+2)<<8)|(*(cp+3));
-            break;
-        case 0x68:
-            // uint64;
-            value=((uint64_t)*cp<<56)|((uint64_t)*(cp+1)<<48)|((uint64_t)*(cp+2)<<40)|((uint64_t)*(cp+3)<<32)|((uint64_t)*(cp+4)<<24)|((uint64_t)*(cp+5)<<16)|((uint64_t)*(cp+6)<<8)|(*(cp+7));
-            break;
-
-        default:
-          if (!(type&0xf0)) {
-              // octet string serial number, len variable
-              // could not find any info on how Hager encodes meter number
-              // my own 363 works , but others dont
-
-              if (len==9) {
-                // known haager coding serial number => 24 bit - 24 bit
-                cp++;
-                uint32_t s1,s2;
-                s1=*cp<<16|*(cp+1)<<8|*(cp+2);
-                cp+=4;
-                s2=*cp<<16|*(cp+1)<<8|*(cp+2);
-                snprintf(&meter_id[index][0],METER_ID_SIZE,"%u-%u",s1,s2);
-              } else {
-                // some meters give the "server-id"
-                char *str=&meter_id[0][0];
-                for (type=0; type<len-1; type++) {
-                    sprintf(str,"%02x",*cp++);
-                    str+=2;
-                }
-              }
-              return 0;
-          } else {
-            value=999999;
-            scaler=0;
-          }
-          break;
-    }
-#endif
-
     if (scaler==-1) {
         value/=10;
     }
