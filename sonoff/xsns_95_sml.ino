@@ -80,7 +80,7 @@ die älteren werden nicht mehr unterstützt.
 
 #endif
 
-// JASON Strings besser NICHT übersetzen
+// JSON Strings besser NICHT übersetzen
 // max 23 Zeichen
 #define DJ_TPWRIN "Total_in"
 #define DJ_TPWROUT "Total_out"
@@ -109,9 +109,10 @@ struct METER_DESC {
 #define COMBO3a 9
 #define Q3B_V1 10
 #define EHZ363_2 11
+#define COMBO4 12
 
 // diesen Zähler auswählen
-#define METER EHZ363
+#define METER COMBO4
 
 //=====================================================
 // Einträge in Liste
@@ -143,8 +144,8 @@ struct METER_DESC {
 // METERS_USED muss auf die Anzahl der benutzten Zähler gesetzt werden
 // entsprechend viele Einträge muss der METER_DESC dann haben (für jeden Zähler einen)
 // 1. srcpin der pin für den seriellen input 0 oder 3 => RX pin, ansonsten software serial GPIO pin
-// 2. type o=obis, s=sml
-// 3. jason prefix max 5 Zeichen, kann im Prinzip frei gesetzt werden
+// 2. type o=obis, s=sml, c=COUNTER (z.B. Gaszähler reed Kontakt)
+// 3. json prefix max 5 Zeichen, kann im Prinzip frei gesetzt werden
 // dieses Prefix wird sowohl in der Web Anzeige als auch in der MQTT Nachricht vorangestellt
 
 #if METER==EHZ161_0
@@ -352,6 +353,24 @@ const uint8_t meter[]=
 "1,77070100100700ff@1," D_TPWRCURR ",W," DJ_TPWRCURR ",0|"
 //0x77,0x07,0x01,0x00,0x00,0x00,0x09,0xff
 "1,77070100000009ff@#," D_METERNR ",," DJ_METERNR ",0";
+#endif
+
+// Beispiel für einen OBIS Stromzähler und einen Gaszähler
+#if METER==COMBO4
+#define METERS_USED 2
+struct METER_DESC const meter_desc[METERS_USED]={
+  [0]={3,'o',"OBIS"}, // harware serial RX pin
+  [1]={14,'c',"GAS"}}; // GPIO14 counter
+
+// 2 Zähler definiert
+const uint8_t meter[]=
+"1,1-0:1.8.1*255(@1," D_TPWRIN ",KWh," DJ_TPWRIN ",4|"
+"1,1-0:2.8.1*255(@1," D_TPWROUT ",KWh," DJ_TPWROUT ",4|"
+"1,=d 2 10 @1," D_TPWRCURR ",W," DJ_TPWRCURR ",0|"
+"1,1-0:0.0.0*255(@#)," D_METERNR ",," DJ_METERNR ",0|"
+
+"2,1-0:1.8.1*255(@1," D_TPWRIN ",cbm," DJ_TPWRIN ",2";
+
 #endif
 
 //=====================================================
@@ -774,71 +793,65 @@ double xCharToDouble(const char *str)
   return result;
 }
 
-// if more then 1 software serial, solution would be to enable each channel for x seconds
-// no longer needed because of irq driven no wait software serial
-#ifdef SML_SPECMODE
-#define SS_ATIME 5*10
-uint8_t active_meter;
-uint8_t poll_cnt;
-#endif
+uint8_t sml_cnt_debounce[MAX_COUNTERS];
+uint8_t sml_cnt_old_state[MAX_COUNTERS];
 
+// polled every 50 ms
 void SML_Poll(void) {
-    uint16_t count,meters;
-
-
-#ifdef SML_SPECMODE
-    poll_cnt++;
-    if (poll_cnt>SS_ATIME) {
-      poll_cnt=0;
-      // disable irq of pin
-      //detachInterrupt(digitalPinToInterrupt(meter_desc[active_meter+1].srcpin));
-      GPC(meter_desc[active_meter+1].srcpin) &= ~(0xF << GPCI);//INT mode disabled
-      active_meter++;
-      if (active_meter>=METERS_USED-1) {
-        active_meter=0;
-      }
-      // enable irq of pin
-      GPC(meter_desc[active_meter+1].srcpin) |= ((FALLING & 0xF) << GPCI);//INT mode "mode"
-      //attachInterrupt(meter_desc[active_meter+1].srcpin, ISRList[meter_desc[active_meter+1].srcpin], FALLING);
-    }
-#endif
-
+    uint16_t count,meters,cindex=0;
 
     for (meters=0; meters<METERS_USED; meters++) {
-      if (!meter_desc[meters].srcpin || meter_desc[meters].srcpin==3) {
-        while (Serial.available()) {
-          // shift in
-          for (count=0; count<SML_BSIZ-1; count++) {
-            smltbuf[meters][count]=smltbuf[meters][count+1];
-          }
-          if (meter_desc[meters].type=='o') {
-            smltbuf[meters][SML_BSIZ-1]=(uint8_t)Serial.read()&0x7f;
-          } else {
-            smltbuf[meters][SML_BSIZ-1]=(uint8_t)Serial.read();
-          }
-          sb_counter++;
-          SML_Decode(meters);
+      if (meter_desc[meters].type=='c') {
+        // poll for counters and debouce
+        uint8_t state;
+        sml_cnt_debounce[cindex]<<=1;
+        sml_cnt_debounce[cindex]|=(digitalRead(meter_desc[meters].srcpin)&1)|0x80;
+        if (sml_cnt_debounce[cindex]==0xc0) {
+          // is 1
+          state=1;
+        } else {
+          // is 0, means switch down
+          state=0;
         }
+        if (sml_cnt_old_state[cindex]!=state) {
+          // state has changed
+          sml_cnt_old_state[cindex]=state;
+          if (state==0) {
+            // inc counter
+            RtcSettings.pulse_counter[cindex]++;
+          }
+        }
+        cindex++;
       } else {
-
-#ifdef SML_SPECMODE
-        if ((meters-1)!=active_meter) {
-          // scan only active meter
-          continue;
-        }
-#endif
-        while (meter_ss[meters]->available()) {
-          // shift in
-          for (count=0; count<SML_BSIZ-1; count++) {
-            smltbuf[meters][count]=smltbuf[meters][count+1];
+        // poll for serial input
+        if (!meter_desc[meters].srcpin || meter_desc[meters].srcpin==3) {
+          while (Serial.available()) {
+            // shift in
+            for (count=0; count<SML_BSIZ-1; count++) {
+              smltbuf[meters][count]=smltbuf[meters][count+1];
+            }
+            if (meter_desc[meters].type=='o') {
+              smltbuf[meters][SML_BSIZ-1]=(uint8_t)Serial.read()&0x7f;
+            } else {
+              smltbuf[meters][SML_BSIZ-1]=(uint8_t)Serial.read();
+            }
+            sb_counter++;
+            SML_Decode(meters);
           }
-          if (meter_desc[meters].type=='o') {
-            smltbuf[meters][SML_BSIZ-1]=(uint8_t)meter_ss[meters]->read()&0x7f;
-          } else {
-            smltbuf[meters][SML_BSIZ-1]=(uint8_t)meter_ss[meters]->read();
+        } else {
+          while (meter_ss[meters]->available()) {
+            // shift in
+            for (count=0; count<SML_BSIZ-1; count++) {
+              smltbuf[meters][count]=smltbuf[meters][count+1];
+            }
+            if (meter_desc[meters].type=='o') {
+              smltbuf[meters][SML_BSIZ-1]=(uint8_t)meter_ss[meters]->read()&0x7f;
+            } else {
+              smltbuf[meters][SML_BSIZ-1]=(uint8_t)meter_ss[meters]->read();
+            }
+            sb_counter++;
+            SML_Decode(meters);
           }
-          sb_counter++;
-          SML_Decode(meters);
         }
       }
     }
@@ -1057,9 +1070,9 @@ void SML_Immediate_MQTT(const char *mp,uint8_t index,uint8_t mindex) {
   }
 }
 
-// web + jason interface
+// web + json interface
 void SML_Show(boolean json) {
-  int8_t count,mindex;
+  int8_t count,mindex,cindex=0;
   char tpowstr[32];
   char name[24];
   char unit[8];
@@ -1144,11 +1157,18 @@ void SML_Show(boolean json) {
 
             if (!mid) {
               uint8_t dp=atoi(cp)&0xf;
-              dtostrfd(meter_vars[index],dp,tpowstr);
+              if (meter_desc[mindex].type=='c') {
+                uint16_t scale=1;
+                for (uint8_t s=0; s<dp; s++) scale*=10;
+                dtostrfd((double)RtcSettings.pulse_counter[cindex]/(double)scale,dp,tpowstr);
+                cindex++;
+              } else {
+                dtostrfd(meter_vars[index],dp,tpowstr);
+              }
             }
 
             if (json) {
-              // jason export
+              // json export
               if (index==0) snprintf_P(mqtt_data, sizeof(mqtt_data), "%s,\"%s\":{\"%s\":%s", mqtt_data,meter_desc[mindex].prefix,jname,tpowstr);
               else {
                 if (lastmind!=mindex) {
@@ -1179,21 +1199,33 @@ void SML_Show(boolean json) {
 
 
 void SML_Init(void) {
+  // preloud counters
+  for (byte i = 0; i < MAX_COUNTERS; i++) {
+      RtcSettings.pulse_counter[i]=Settings.pulse_counter[i];
+  }
   for (uint8_t meters=0; meters<METERS_USED; meters++) {
-    if (!meter_desc[meters].srcpin || meter_desc[meters].srcpin==3) {
-      ClaimSerial();
-      SetSerialBaudrate(SML_BAUDRATE);
+    if (meter_desc[meters].type=='c') {
+        // counters, set to input with pullup
+        pinMode(meter_desc[meters].srcpin,INPUT_PULLUP);
+        //meter_vars[index]=0;
     } else {
+      // serial input, init
+      if (!meter_desc[meters].srcpin || meter_desc[meters].srcpin==3) {
+        ClaimSerial();
+        SetSerialBaudrate(SML_BAUDRATE);
+      } else {
 #ifdef SPECIAL_SS
-      meter_ss[meters] = new TasmotaSerial(meter_desc[meters].srcpin,-1,0,1);
+        meter_ss[meters] = new TasmotaSerial(meter_desc[meters].srcpin,-1,0,1);
 #else
-      meter_ss[meters] = new TasmotaSerial(meter_desc[meters].srcpin,-1);
+        meter_ss[meters] = new TasmotaSerial(meter_desc[meters].srcpin,-1);
 #endif
-      if (meter_ss[meters]->begin(SML_BAUDRATE)) {
-        meter_ss[meters]->flush();
+        if (meter_ss[meters]->begin(SML_BAUDRATE)) {
+          meter_ss[meters]->flush();
+        }
       }
     }
   }
+
 }
 
 #ifdef SML_SEND_SEQ
@@ -1230,12 +1262,27 @@ uint8_t parity=0;
 bool XSNS_95_cmd(void) {
   boolean serviced = true;
   const char S_JSON_SML[] = "{\"" D_CMND_SENSOR "%d\":%s:%d}";
+  const char S_JSON_CNT[] = "{\"" D_CMND_SENSOR "%d\":%s%d:%d}";
   if (XdrvMailbox.data_len > 0) {
       char *cp=XdrvMailbox.data;
       if (*cp=='d') {
+        // set dump mode
         cp++;
         dump2log=atoi(cp);
         snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_SML, XSNS_95,"dump_mode",dump2log);
+      } else if (*cp=='c') {
+          // set ounter
+          cp++;
+          uint8_t index=*cp&7;
+          if (index<1 || index>MAX_COUNTERS) index=1;
+          cp++;
+          while (*cp==' ') cp++;
+          if (isdigit(*cp)) {
+            uint32_t cval=atoi(cp);
+            while (isdigit(*cp)) cp++;
+            RtcSettings.pulse_counter[index-1]=cval;
+          }
+          snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_CNT, XSNS_95,"Counter",index,RtcSettings.pulse_counter[index-1]);
       } else {
         serviced=false;
       }
@@ -1243,6 +1290,11 @@ bool XSNS_95_cmd(void) {
   return serviced;
 }
 
+void SML_CounterSaveState(void) {
+  for (byte i = 0; i < MAX_COUNTERS; i++) {
+      Settings.pulse_counter[i] = RtcSettings.pulse_counter[i];
+  }
+}
 /*********************************************************************************************\
  * Interface
 \*********************************************************************************************/
@@ -1274,6 +1326,9 @@ boolean Xsns95(byte function) {
         if (XSNS_95 == XdrvMailbox.index) {
           result = XSNS_95_cmd();
         }
+        break;
+      case FUNC_SAVE_BEFORE_RESTART:
+        SML_CounterSaveState();
         break;
     }
   return result;

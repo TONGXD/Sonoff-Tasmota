@@ -32,7 +32,7 @@
 #define GAS_POLL_MODE
 #define GAS_DECIMALS 2
 // if defined mirrors io state to a led (sampled at 100 ms intervalls)
-#define GAS_LED 2
+//#define GAS_LED 2
 
 
 unsigned long last_counter_timer[MAX_COUNTERS]; // Last counter time in micro seconds
