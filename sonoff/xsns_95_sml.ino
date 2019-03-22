@@ -111,10 +111,10 @@ struct METER_DESC {
 #define COMBO3a 9
 #define Q3B_V1 10
 #define EHZ363_2 11
-#define COMBO4 12
+#define COMBO3b 12
 
 // diesen Zähler auswählen
-#define METER COMBO4
+#define METER COMBO3b
 
 //=====================================================
 // Einträge in Liste
@@ -357,25 +357,25 @@ const uint8_t meter[]=
 "1,77070100000009ff@#," D_METERNR ",," DJ_METERNR ",0";
 #endif
 
-// Beispiel für einen OBIS Stromzähler und einen Gaszähler
-#if METER==COMBO4
+// Beispiel für einen OBIS Stromzähler und einen Gaszähler + Wasserzähler
+#if METER==COMBO3b
 #define METERS_USED 3
 struct METER_DESC const meter_desc[METERS_USED]={
   [0]={3,'o',"OBIS"}, // harware serial RX pin
   [1]={14,'c',"Gas"}, // GPIO14 gas counter
   [2]={1,'c',"Wasser"}}; // water counter
 
-// 2 Zähler definiert
+// 3 Zähler definiert
 const uint8_t meter[]=
 "1,1-0:1.8.1*255(@1," D_TPWRIN ",KWh," DJ_TPWRIN ",4|"
 "1,1-0:2.8.1*255(@1," D_TPWROUT ",KWh," DJ_TPWROUT ",4|"
 "1,=d 2 10 @1," D_TPWRCURR ",W," DJ_TPWRCURR ",0|"
 "1,1-0:0.0.0*255(@#)," D_METERNR ",," DJ_METERNR ",0|"
 
-// bei gaszählern wird alles bis zum hier D_TPWRIN ignoriert
-// die Anzahl der Kommastellen wird zur Skalierung benutzt (hier 2)
-"2,1-0:1.8.0*255(@1," D_TPWRIN ",cbm," DJ_TPWRIN ",2|"
-"3,1-0:1.8.0*255(@1," D_TPWRIN ",cbm," DJ_TPWRIN ",2";
+// bei gaszählern (countern) muss der Vergleichsstring so aussehen wie hier
+"2,1-0:1.8.0*255(@100," D_TPWRIN ",cbm," DJ_TPWRIN ",2|"
+
+"3,1-0:1.8.0*255(@100," D_TPWRIN ",cbm," DJ_TPWRIN ",2";
 #endif
 
 //=====================================================
@@ -727,9 +727,6 @@ void SML_Poll(void) {
 
     for (meters=0; meters<METERS_USED; meters++) {
       if (meter_desc[meters].type=='c') {
-      //  sprintf((char*)&smltbuf[meters][0],"1-0:1.8.0*255(%d)",RtcSettings.pulse_counter[cindex]);
-      //  SML_Decode(meters);
-
         // poll for counters and debouce
         uint8_t state;
         sml_cnt_debounce[cindex]<<=1;
@@ -747,6 +744,8 @@ void SML_Poll(void) {
           if (state==0) {
             // inc counter
             RtcSettings.pulse_counter[cindex]++;
+            sprintf((char*)&smltbuf[meters][0],"1-0:1.8.0*255(%d)",RtcSettings.pulse_counter[cindex]);
+            SML_Decode(meters);
           }
         }
         cindex++;
@@ -807,12 +806,6 @@ void SML_Decode(uint8_t index) {
     }
 
     if (index!=mindex) goto nextsect;
-/*
-    if (meter_desc[mindex].type=='c') {
-      // fetch counter
-      goto nextsect;
-    }
-    */
 
     // start of serial source buffer
     cp=&smltbuf[mindex][0];
@@ -906,7 +899,7 @@ void SML_Decode(uint8_t index) {
       // compare value
       uint8_t found=1;
       while (*mp!='@') {
-        if (meter_desc[mindex].type=='o') {
+        if (meter_desc[mindex].type=='o' || meter_desc[mindex].type=='c') {
           if (*mp++!=*cp++) {
             found=0;
           }
@@ -1091,18 +1084,7 @@ void SML_Show(boolean json) {
 
             if (!mid) {
               uint8_t dp=atoi(cp)&0xf;
-#if 1
-              if (meter_desc[mindex].type=='c') {
-                uint16_t scale=1;
-                for (uint8_t s=0; s<dp; s++) scale*=10;
-                dtostrfd((double)RtcSettings.pulse_counter[cindex]/(double)scale,dp,tpowstr);
-                cindex++;
-              } else {
-                dtostrfd(meter_vars[index],dp,tpowstr);
-              }
-#else
-                dtostrfd(meter_vars[index],dp,tpowstr);
-#endif
+              dtostrfd(meter_vars[index],dp,tpowstr);
             }
 
             if (json) {
@@ -1137,6 +1119,7 @@ void SML_Show(boolean json) {
 
 
 void SML_Init(void) {
+  uint8_t cindex=0;
   // preloud counters
   for (byte i = 0; i < MAX_COUNTERS; i++) {
       RtcSettings.pulse_counter[i]=Settings.pulse_counter[i];
@@ -1145,7 +1128,9 @@ void SML_Init(void) {
     if (meter_desc[meters].type=='c') {
         // counters, set to input with pullup
         pinMode(meter_desc[meters].srcpin,INPUT_PULLUP);
-        //meter_vars[index]=0;
+        sprintf((char*)&smltbuf[meters][0],"1-0:1.8.0*255(%d)",RtcSettings.pulse_counter[cindex]);
+        SML_Decode(meters);
+        cindex++;
     } else {
       // serial input, init
       if (!meter_desc[meters].srcpin || meter_desc[meters].srcpin==3) {
