@@ -95,7 +95,7 @@ die älteren werden nicht mehr unterstützt.
 struct METER_DESC {
   uint8_t srcpin;
   uint8_t type;
-  char prefix[6];
+  char prefix[8];
 };
 
 // Zählerliste , hier neue Zähler eintragen
@@ -147,7 +147,7 @@ struct METER_DESC {
 // entsprechend viele Einträge muss der METER_DESC dann haben (für jeden Zähler einen)
 // 1. srcpin der pin für den seriellen input 0 oder 3 => RX pin, ansonsten software serial GPIO pin
 // 2. type o=obis, s=sml, c=COUNTER (z.B. Gaszähler reed Kontakt)
-// 3. json prefix max 5 Zeichen, kann im Prinzip frei gesetzt werden
+// 3. json prefix max 7 Zeichen, kann im Prinzip frei gesetzt werden
 // dieses Prefix wird sowohl in der Web Anzeige als auch in der MQTT Nachricht vorangestellt
 
 #if METER==EHZ161_0
@@ -359,10 +359,11 @@ const uint8_t meter[]=
 
 // Beispiel für einen OBIS Stromzähler und einen Gaszähler
 #if METER==COMBO4
-#define METERS_USED 2
+#define METERS_USED 3
 struct METER_DESC const meter_desc[METERS_USED]={
   [0]={3,'o',"OBIS"}, // harware serial RX pin
-  [1]={14,'c',"GAS"}}; // GPIO14 counter
+  [1]={14,'c',"Gas"}, // GPIO14 gas counter
+  [2]={1,'c',"Wasser"}}; // water counter
 
 // 2 Zähler definiert
 const uint8_t meter[]=
@@ -373,8 +374,8 @@ const uint8_t meter[]=
 
 // bei gaszählern wird alles bis zum hier D_TPWRIN ignoriert
 // die Anzahl der Kommastellen wird zur Skalierung benutzt (hier 2)
-"2,1-0:1.8.1*255(@1," D_TPWRIN ",cbm," DJ_TPWRIN ",2";
-
+"2,1-0:1.8.0*255(@1," D_TPWRIN ",cbm," DJ_TPWRIN ",2|"
+"3,1-0:1.8.0*255(@1," D_TPWRIN ",cbm," DJ_TPWRIN ",2";
 #endif
 
 //=====================================================
@@ -726,6 +727,9 @@ void SML_Poll(void) {
 
     for (meters=0; meters<METERS_USED; meters++) {
       if (meter_desc[meters].type=='c') {
+      //  sprintf((char*)&smltbuf[meters][0],"1-0:1.8.0*255(%d)",RtcSettings.pulse_counter[cindex]);
+      //  SML_Decode(meters);
+
         // poll for counters and debouce
         uint8_t state;
         sml_cnt_debounce[cindex]<<=1;
@@ -803,10 +807,12 @@ void SML_Decode(uint8_t index) {
     }
 
     if (index!=mindex) goto nextsect;
-
+/*
     if (meter_desc[mindex].type=='c') {
+      // fetch counter
       goto nextsect;
     }
+    */
 
     // start of serial source buffer
     cp=&smltbuf[mindex][0];
@@ -932,7 +938,7 @@ void SML_Decode(uint8_t index) {
         } else {
           double dval;
           // get numeric values
-          if (meter_desc[mindex].type=='o') {
+          if (meter_desc[mindex].type=='o' || meter_desc[mindex].type=='c') {
             dval=xCharToDouble((char*)cp);
           } else {
             dval=sml_getvalue(cp,mindex);
@@ -1085,6 +1091,7 @@ void SML_Show(boolean json) {
 
             if (!mid) {
               uint8_t dp=atoi(cp)&0xf;
+#if 1
               if (meter_desc[mindex].type=='c') {
                 uint16_t scale=1;
                 for (uint8_t s=0; s<dp; s++) scale*=10;
@@ -1093,6 +1100,9 @@ void SML_Show(boolean json) {
               } else {
                 dtostrfd(meter_vars[index],dp,tpowstr);
               }
+#else
+                dtostrfd(meter_vars[index],dp,tpowstr);
+#endif
             }
 
             if (json) {
