@@ -369,6 +369,8 @@ const uint8_t meter[]=
 "1,=d 2 10 @1," D_TPWRCURR ",W," DJ_TPWRCURR ",0|"
 "1,1-0:0.0.0*255(@#)," D_METERNR ",," DJ_METERNR ",0|"
 
+// bei gaszählern wird alles bis zum hier D_TPWRIN ignoriert
+// die Anzahl der Kommastellen wird zur Skalierung benutzt (hier 2)
 "2,1-0:1.8.1*255(@1," D_TPWRIN ",cbm," DJ_TPWRIN ",2";
 
 #endif
