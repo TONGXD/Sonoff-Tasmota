@@ -44,6 +44,8 @@ die älteren werden nicht mehr unterstützt.
 
 // send this every N seconds
 //#define SML_SEND_SEQ
+// debug counter input to led
+#define GAS_LED 2
 
 
 // support für mehr als 2 Meter mit spezieller Tasmota Serial Version
@@ -146,7 +148,7 @@ struct METER_DESC {
 // METERS_USED muss auf die Anzahl der benutzten Zähler gesetzt werden
 // entsprechend viele Einträge muss der METER_DESC dann haben (für jeden Zähler einen)
 // 1. srcpin der pin für den seriellen input 0 oder 3 => RX pin, ansonsten software serial GPIO pin
-// 2. type o=obis, s=sml, c=COUNTER (z.B. Gaszähler reed Kontakt)
+// 2. type o=obis, s=sml, c=COUNTER (z.B. Gaszähler reed Kontakt c=ohne Pullup C=mit Pullup)
 // 3. json prefix max 7 Zeichen, kann im Prinzip frei gesetzt werden
 // dieses Prefix wird sowohl in der Web Anzeige als auch in der MQTT Nachricht vorangestellt
 
@@ -726,8 +728,16 @@ void SML_Poll(void) {
     uint16_t count,meters,cindex=0;
 
     for (meters=0; meters<METERS_USED; meters++) {
-      if (meter_desc[meters].type=='c') {
+      if (tolower(meter_desc[meters].type)=='c') {
         // poll for counters and debouce
+#ifdef GAS_LED
+        pinMode(GAS_LED, OUTPUT);
+        if (digitalRead(meter_desc[meters].srcpin)) {
+            digitalWrite(GAS_LED,HIGH);
+        } else {
+            digitalWrite(GAS_LED,LOW);
+        }
+#endif
         uint8_t state;
         sml_cnt_debounce[cindex]<<=1;
         sml_cnt_debounce[cindex]|=(digitalRead(meter_desc[meters].srcpin)&1)|0x80;
@@ -899,7 +909,7 @@ void SML_Decode(uint8_t index) {
       // compare value
       uint8_t found=1;
       while (*mp!='@') {
-        if (meter_desc[mindex].type=='o' || meter_desc[mindex].type=='c') {
+        if (meter_desc[mindex].type=='o' || tolower(meter_desc[mindex].type)=='c') {
           if (*mp++!=*cp++) {
             found=0;
           }
@@ -931,7 +941,7 @@ void SML_Decode(uint8_t index) {
         } else {
           double dval;
           // get numeric values
-          if (meter_desc[mindex].type=='o' || meter_desc[mindex].type=='c') {
+          if (meter_desc[mindex].type=='o' || tolower(meter_desc[mindex].type)=='c') {
             dval=xCharToDouble((char*)cp);
           } else {
             dval=sml_getvalue(cp,mindex);
@@ -1125,9 +1135,13 @@ void SML_Init(void) {
       RtcSettings.pulse_counter[i]=Settings.pulse_counter[i];
   }
   for (uint8_t meters=0; meters<METERS_USED; meters++) {
-    if (meter_desc[meters].type=='c') {
+    if (tolower(meter_desc[meters].type)=='c') {
         // counters, set to input with pullup
-        pinMode(meter_desc[meters].srcpin,INPUT_PULLUP);
+        if (meter_desc[meters].type=='C') {
+          pinMode(meter_desc[meters].srcpin,INPUT_PULLUP);
+        } else {
+          pinMode(meter_desc[meters].srcpin,INPUT);
+        }
         sprintf((char*)&smltbuf[meters][0],"1-0:1.8.0*255(%d)",RtcSettings.pulse_counter[cindex]);
         SML_Decode(meters);
         cindex++;
