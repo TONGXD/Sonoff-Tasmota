@@ -7,6 +7,8 @@ ist es mit der originalen TasmotaSerial nicht möglich 3 Zähler gleichzeitig ab
 durch Modifikation des Tasmota Serial Drivers sollten jetzt auch mehr als 2 Zähler
 funktionieren. Dazu muss auch die TasmotaSerial-2.3.0 ebenfalls kopiert werden
 
+jetzt auch mit Unterstützung für Gas und Wasserzähler
+
 nur dieser Treiber wird in Zukunft weiterentwickelt
 die älteren werden nicht mehr unterstützt.
 
