@@ -882,6 +882,10 @@ void SML_Decode(uint8_t index) {
 
     if (index!=mindex) goto nextsect;
 
+    if (meter_desc[mindex].type=='c') {
+      goto nextsect;
+    }
+
     // start of serial source buffer
     cp=&smltbuf[mindex][0];
 
