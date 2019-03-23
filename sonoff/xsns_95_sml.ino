@@ -53,6 +53,9 @@ die älteren werden nicht mehr unterstützt.
 
 #include <TasmotaSerial.h>
 
+// speziellen angepassten Tasmota seriell Treiber benutzen
+#define SPECIAL_SS
+
 // diese Version verwendet den serial REC Pin des ESP, und zusätzliche GPIO
 // pins als Software serial
 // und kann mit jeder aktuellen Version von Tasmota kombiniert werden
