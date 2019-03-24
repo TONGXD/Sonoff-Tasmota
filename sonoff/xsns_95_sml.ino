@@ -8,6 +8,7 @@ durch Modifikation des Tasmota Serial Drivers sollten jetzt auch mehr als 2 Zäh
 funktionieren. Dazu muss auch die TasmotaSerial-2.3.0 ebenfalls kopiert werden
 
 jetzt auch mit Unterstützung für Gas und Wasserzähler
+Zähler setzen mit Sensor95 c1 xxx, Sensor95 c2 xxx etc
 
 nur dieser Treiber wird in Zukunft weiterentwickelt
 die älteren werden nicht mehr unterstützt.
@@ -757,8 +758,7 @@ void SML_Poll(void) {
           if (state==0) {
             // inc counter
             RtcSettings.pulse_counter[cindex]++;
-            sprintf((char*)&smltbuf[meters][0],"1-0:1.8.0*255(%d)",RtcSettings.pulse_counter[cindex]);
-            SML_Decode(meters);
+            InjektCounterValue(meters,RtcSettings.pulse_counter[cindex]);
           }
         }
         cindex++;
@@ -1145,8 +1145,7 @@ void SML_Init(void) {
         } else {
           pinMode(meter_desc[meters].srcpin,INPUT);
         }
-        sprintf((char*)&smltbuf[meters][0],"1-0:1.8.0*255(%d)",RtcSettings.pulse_counter[cindex]);
-        SML_Decode(meters);
+        InjektCounterValue(meters,RtcSettings.pulse_counter[cindex]);
         cindex++;
     } else {
       // serial input, init
@@ -1224,8 +1223,7 @@ bool XSNS_95_cmd(void) {
             uint8_t cindex=0;
             for (uint8_t meters=0; meters<METERS_USED; meters++) {
               if (tolower(meter_desc[meters].type)=='c') {
-                sprintf((char*)&smltbuf[meters][0],"1-0:1.8.0*255(%d)",RtcSettings.pulse_counter[cindex]);
-                SML_Decode(meters);
+                InjektCounterValue(meters,RtcSettings.pulse_counter[cindex]);
                 cindex++;
               }
             }
@@ -1236,6 +1234,11 @@ bool XSNS_95_cmd(void) {
       }
   }
   return serviced;
+}
+
+void InjektCounterValue(uint8_t meter,uint32_t counter) {
+  sprintf((char*)&smltbuf[meter][0],"1-0:1.8.0*255(%d)",counter);
+  SML_Decode(meter);
 }
 
 void SML_CounterSaveState(void) {
