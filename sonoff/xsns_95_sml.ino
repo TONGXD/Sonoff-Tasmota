@@ -1221,6 +1221,14 @@ bool XSNS_95_cmd(void) {
             uint32_t cval=atoi(cp);
             while (isdigit(*cp)) cp++;
             RtcSettings.pulse_counter[index-1]=cval;
+            uint8_t cindex=0;
+            for (uint8_t meters=0; meters<METERS_USED; meters++) {
+              if (tolower(meter_desc[meters].type)=='c') {
+                sprintf((char*)&smltbuf[meters][0],"1-0:1.8.0*255(%d)",RtcSettings.pulse_counter[cindex]);
+                SML_Decode(meters);
+                cindex++;
+              }
+            }
           }
           snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_CNT, XSNS_95,"Counter",index,RtcSettings.pulse_counter[index-1]);
       } else {
