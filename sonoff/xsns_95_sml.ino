@@ -125,7 +125,7 @@ die älteren werden nicht mehr unterstützt.
 #define DJ_METERNR "Meter_number"
 #define DJ_CSUM "Curr_summ"
 #define DJ_VAVG "Volt_avg"
-
+#define DJ_COUNTER "Counter"
 
 struct METER_DESC {
   uint8_t srcpin;
@@ -171,7 +171,7 @@ struct METER_DESC {
 // =====================================================
 // steht in der Sequenz ein = Zeichen am Anfang kann folgender Eintrag definiert werden:
 // =m => mathe berechne Werte z.B. =m 3+4+5  addiert die Ergebnisse aus den Zeilen 3,4 und 5
-// + - / * werden unterstützt
+// + - / * werden unterstützt  das #Zeichen  bezeichnet eine Konstante  /#3 => geteilt durch 3
 // damit kann z.B. die Summe aus 3 Phasen berechnet werden
 // =d => differenz berechne Differenzwerte über die Zeit aus dem Ergebnis der Zeile
 // z.B. =d 3 10 berechnet die Differenz nach jeweils 10 Sekunden des Ergebnisses aus Zeile 3
@@ -426,11 +426,11 @@ struct METER_DESC const meter_desc[METERS_USED]={
 const uint8_t meter[]=
 //----------------------------Wasserzähler--sensor95 c1------------------------------------
 //"1,=h==================|"
-"1,1-0:1.8.0*255(@10000," D_H2oIN ",cbm," DJ_TPWRIN ",4|"            // 1
+"1,1-0:1.8.0*255(@10000," D_H2oIN ",cbm," DJ_COUNTER ",4|"            // 1
 //----------------------------Gaszähler-----sensor95 c2------------------------------------
 // bei gaszählern (countern) muss der Vergleichsstring so aussehen wie hier
 "2,=h==================|"
-"2,1-0:1.8.0*255(@100," D_GasIN ",cbm," DJ_TPWRIN ",3|"              // 2
+"2,1-0:1.8.0*255(@100," D_GasIN ",cbm," DJ_COUNTER ",3|"              // 2
 //----------------------------Stromzähler-EHZ363W5--sensor95 d0----------------------------
 "3,=h==================|"
 //0x77,0x07,0x01,0x00,0x01,0x08,0x00,0xff
