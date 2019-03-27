@@ -74,7 +74,17 @@ die älteren werden nicht mehr unterstützt.
 #define D_TPWRCURR1 "Verbrauch P1"
 #define D_TPWRCURR2 "Verbrauch P2"
 #define D_TPWRCURR3 "Verbrauch P3"
+#define D_Strom_L1 "Strom L1"
+#define D_Strom_L2 "Strom L2"
+#define D_Strom_L3 "Strom L3"
+#define D_Spannung_L1 "Spannung L1"
+#define D_Spannung_L2 "Spannung L2"
+#define D_Spannung_L3 "Spannung L3"
 #define D_METERNR "Zähler Nr"
+#define D_GasIN "Zählerstand"                // Gas-Verbrauch
+#define D_H2oIN "Zählerstand"                // H2o-Verbrauch
+#define D_StL1L2L3 "Ströme L1+L2+L3"
+#define D_SpL1L2L3 "Spannung L1+L2+L3/3"
 
 #else
 // alle anderen Sprachen
@@ -84,7 +94,17 @@ die älteren werden nicht mehr unterstützt.
 #define D_TPWRCURR1 "Current-In p1"
 #define D_TPWRCURR2 "Current-In p2"
 #define D_TPWRCURR3 "Current-In p3"
+#define D_Strom_L1 "Current L1"
+#define D_Strom_L2 "Current L2"
+#define D_Strom_L3 "Current L3"
+#define D_Spannung_L1 "Voltage L1"
+#define D_Spannung_L2 "Voltage L2"
+#define D_Spannung_L3 "Voltage L3"
 #define D_METERNR "Meter_number"
+#define D_GasIN "Counter"                // Gas-Verbrauch
+#define D_H2oIN "Counter"                // H2o-Verbrauch
+#define D_StL1L2L3 "Current L1+L2+L3"
+#define D_SpL1L2L3 "Voltage L1+L2+L3/3"
 
 #endif
 
@@ -96,7 +116,16 @@ die älteren werden nicht mehr unterstützt.
 #define DJ_TPWRCURR1 "Power_p1"
 #define DJ_TPWRCURR2 "Power_p2"
 #define DJ_TPWRCURR3 "Power_p3"
+#define DJ_CURR1 "Curr_p1"
+#define DJ_CURR2 "Curr_p2"
+#define DJ_CURR3 "Curr_p3"
+#define DJ_VOLT1 "Volt_p1"
+#define DJ_VOLT2 "Volt_p2"
+#define DJ_VOLT3 "Volt_p3"
 #define DJ_METERNR "Meter_number"
+#define DJ_CSUM "Curr_summ"
+#define DJ_VAVG "Volt_avg"
+
 
 struct METER_DESC {
   uint8_t srcpin;
@@ -118,9 +147,10 @@ struct METER_DESC {
 #define Q3B_V1 10
 #define EHZ363_2 11
 #define COMBO3b 12
+#define WGS_COMBO 13
 
 // diesen Zähler auswählen
-#define METER COMBO3b
+#define METER WGS_COMBO
 
 //=====================================================
 // Einträge in Liste
@@ -383,6 +413,62 @@ const uint8_t meter[]=
 
 "3,1-0:1.8.0*255(@100," D_TPWRIN ",cbm," DJ_TPWRIN ",2";
 #endif
+
+
+#if METER==WGS_COMBO
+#define METERS_USED 3
+
+struct METER_DESC const meter_desc[METERS_USED]={
+  [0]={1,'c',"H20"}, // GPIO1 Wasser Zähler
+  [1]={4,'c',"GAS"}, // GPIO4 gas Zähler
+  [2]={3,'s',"SML"}}; // SML harware serial RX pin
+
+const uint8_t meter[]=
+//----------------------------Wasserzähler--sensor95 c1------------------------------------
+//"1,=h==================|"
+"1,1-0:1.8.0*255(@10000," D_H2oIN ",cbm," DJ_TPWRIN ",4|"            // 1
+//----------------------------Gaszähler-----sensor95 c2------------------------------------
+// bei gaszählern (countern) muss der Vergleichsstring so aussehen wie hier
+"2,=h==================|"
+"2,1-0:1.8.0*255(@100," D_GasIN ",cbm," DJ_TPWRIN ",3|"              // 2
+//----------------------------Stromzähler-EHZ363W5--sensor95 d0----------------------------
+"3,=h==================|"
+//0x77,0x07,0x01,0x00,0x01,0x08,0x00,0xff
+"3,77070100010800ff@1000," D_TPWRIN ",KWh," DJ_TPWRIN ",3|"         // 3  Zählerstand Total
+"3,=h==================|"
+//0x77,0x07,0x01,0x00,0x10,0x07,0x00,0xff
+"3,77070100100700ff@1," D_TPWRCURR ",W," DJ_TPWRCURR ",2|"          // 4  Aktuelle Leistung
+"3,=h -------------------------------|"
+"3,=m 10+11+12 @100," D_StL1L2L3 ",A," DJ_CSUM ",2|"            // 5  Summe Aktuelle Ströme (#define DJ_StL1L2L3 "Ströme" | #define D_StL1L2L3 "Ströme")
+//"3,=h -------------------------------|"
+"3,=m 13+14+15/#3 @100," D_SpL1L2L3 ",V," DJ_VAVG ",2|"      // 6   Mittelwert Spannungen (#define DJ_SpL1L2L3 "Spannung" | #define D_SpL1L2L3 "Spannung L1+L2+L3")
+"3,=h==================|"
+//0x77,0x07,0x01,0x00,0x24,0x07,0x00,0xff
+"3,77070100240700ff@1," D_TPWRCURR1 ",W," DJ_TPWRCURR1 ",2|"        // 7  Wirkleistung L1
+//0x77,0x07,0x01,0x00,0x38,0x07,0x00,0xff
+"3,77070100380700ff@1," D_TPWRCURR2 ",W," DJ_TPWRCURR1 ",2|"        // 8  Wirkleistung L2
+//0x77,0x07,0x01,0x00,0x4c,0x07,0x00,0xff
+"3,770701004c0700ff@1," D_TPWRCURR3 ",W," DJ_TPWRCURR1 ",2|"        // 9  Wirkleistung L3
+"3,=h -------------------------------|"
+//0x77,0x07,0x01,0x00,0x1f,0x07,0x00,0xff
+"3,770701001f0700ff@100," D_Strom_L1 ",A," DJ_CURR1 ",2|"        // 10 Strom L1
+//0x77,0x07,0x01,0x00,0x33,0x07,0x00,0xff
+"3,77070100330700ff@100," D_Strom_L2 ",A," DJ_CURR2 ",2|"        // 11 Strom L2
+//0x77,0x07,0x01,0x00,0x47,0x07,0x00,0xff
+"3,77070100470700ff@100," D_Strom_L3 ",A," DJ_CURR3 ",2|"        // 12 Strom L3
+"3,=h -------------------------------|"
+//0x77,0x07,0x01,0x00,0x20,0x07,0x00,0xff
+"3,77070100200700ff@100," D_Spannung_L1 ",V," DJ_VOLT1 ",2|"  // 13 Spannung L1
+//0x77,0x07,0x01,0x00,0x34,0x07,0x00,0xff
+"3,77070100340700ff@100," D_Spannung_L2 ",V," DJ_VOLT2 ",2|"  // 14 Spannung L2
+//0x77,0x07,0x01,0x00,0x48,0x07,0x00,0xff
+"3,77070100480700ff@100," D_Spannung_L3 ",V," DJ_VOLT3 ",2|"  // 15 Spannung L3
+"3,=h==================|"
+//0x77,0x07,0x01,0x00,0x00,0x00,0x09,0xff
+"3,77070100000009ff@#," D_METERNR ",," DJ_METERNR ",0|"             // 16 Service ID
+"3,=h--------------------------------";                             // letzte Zeile
+#endif
+
 
 //=====================================================
 
@@ -835,12 +921,13 @@ void SML_Decode(uint8_t index) {
         while (*mp==' ') mp++;
         // 1. index
         double dvar;
-        uint8_t ind,opr;
+        uint8_t opr;
+        uint32_t ind;
         ind=atoi(mp);
         while (*mp>='0' && *mp<='9') mp++;
         if (ind<1 || ind>MAX_VARS) ind=1;
         dvar=meter_vars[ind-1];
-        for (uint8_t p=0;p<2;p++) {
+        for (uint8_t p=0;p<5;p++) {
           if (*mp=='@') {
             // store result
             meter_vars[vindex]=dvar;
@@ -850,21 +937,30 @@ void SML_Decode(uint8_t index) {
           }
           opr=*mp;
           mp++;
+          uint8_t iflg=0;
+          if (*mp=='#') {
+            iflg=1;
+            mp++;
+          }
           ind=atoi(mp);
           while (*mp>='0' && *mp<='9') mp++;
           if (ind<1 || ind>MAX_VARS) ind=1;
           switch (opr) {
               case '+':
-                dvar+=meter_vars[ind-1];
+                if (iflg) dvar+=ind;
+                else dvar+=meter_vars[ind-1];
                 break;
               case '-':
-                dvar-=meter_vars[ind-1];
+                if (iflg) dvar-=ind;
+                else dvar-=meter_vars[ind-1];
                 break;
               case '*':
-                dvar*=meter_vars[ind-1];
+                if (iflg) dvar*=ind;
+                else dvar*=meter_vars[ind-1];
                 break;
               case '/':
-                dvar/=meter_vars[ind-1];
+                if (iflg) dvar/=ind;
+                else dvar/=meter_vars[ind-1];
                 break;
           }
           while (*mp==' ') mp++;
