@@ -115,6 +115,9 @@ class Adafruit_CCS811 {
 		uint8_t readData();
 
 		bool checkError();
+    uint8_t hwvers;
+    uint16_t fwvers;
+    uint16_t appvers;
 
 	private:
 		uint8_t _i2caddr;

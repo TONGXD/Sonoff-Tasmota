@@ -21,6 +21,10 @@ sint8_t Adafruit_CCS811::begin(uint8_t addr)
 		return -1;
 	}
 
+	hwvers=this->read8(CCS811_HW_VERSION);
+	this->read(CCS811_FW_BOOT_VERSION,(uint8_t*)&fwvers,2);
+	this->read(CCS811_FW_APP_VERSION,(uint8_t*)&appvers,2);
+
 	//try to start the app
 	this->write(CCS811_BOOTLOADER_APP_START, NULL, 0);
 	delay(100);

@@ -41,7 +41,7 @@ uint8_t ecnt = 0;
 
 /********************************************************************************************/
 #define EVERYNSECONDS 5
-
+#define CCS811_DEBUG
 void CCS811Update(void)  // Perform every n second
 {
   tcnt++;
@@ -54,6 +54,12 @@ void CCS811Update(void)  // Perform every n second
         CCS811_type = 1;
         snprintf_P(log_data, sizeof(log_data), S_LOG_I2C_FOUND_AT, "CCS811", 0x5A);
         AddLog(LOG_LEVEL_DEBUG);
+
+#ifdef CCS811_DEBUG
+        snprintf_P(log_data, sizeof(log_data), "CCS811 Vers: HW:%d FW:%d APP:%d",ccs.hwvers,ccs.fwvers,ccs.appvers);
+        AddLog(LOG_LEVEL_DEBUG);
+#endif
+
       } else {
         //snprintf_P(log_data, sizeof(log_data), "CCS811 init failed: %d",res);
         //AddLog(LOG_LEVEL_DEBUG);
@@ -64,15 +70,24 @@ void CCS811Update(void)  // Perform every n second
           TVOC = ccs.getTVOC();
           eCO2 = ccs.geteCO2();
           CCS811_ready = 1;
-          if (global_update) { ccs.setEnvironmentalData((uint8_t)global_humidity, global_temperature); }
+          if (global_update) {
+            ccs.setEnvironmentalData((uint8_t)global_humidity, global_temperature);
+          } else {
+            ccs.setEnvironmentalData(50,25.0);
+          }
           ecnt = 0;
         }
       } else {
         // failed, count up
         ecnt++;
         if (ecnt > 6) {
+          ecnt=0;
           // after 30 seconds, restart
           ccs.begin(CCS811_ADDRESS);
+#ifdef CCS811_DEBUG
+          snprintf_P(log_data, sizeof(log_data), "CCS811 restarted");
+          AddLog(LOG_LEVEL_DEBUG);
+#endif
         }
       }
     }
