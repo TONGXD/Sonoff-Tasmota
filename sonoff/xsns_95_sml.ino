@@ -46,7 +46,7 @@ die älteren werden nicht mehr unterstützt.
 // send this every N seconds
 //#define SML_SEND_SEQ
 // debug counter input to led
-#define GAS_LED 2
+//#define GAS_LED 2
 
 
 // support für mehr als 2 Meter mit spezieller Tasmota Serial Version
@@ -133,6 +133,8 @@ die älteren werden nicht mehr unterstützt.
 struct METER_DESC {
   uint8_t srcpin;
   uint8_t type;
+  uint16_t flag;
+  uint16_t params;
   char prefix[8];
 };
 
@@ -185,14 +187,16 @@ struct METER_DESC {
 // METERS_USED muss auf die Anzahl der benutzten Zähler gesetzt werden
 // entsprechend viele Einträge muss der METER_DESC dann haben (für jeden Zähler einen)
 // 1. srcpin der pin für den seriellen input 0 oder 3 => RX pin, ansonsten software serial GPIO pin
-// 2. type o=obis, s=sml, c=COUNTER (z.B. Gaszähler reed Kontakt c=ohne Pullup C=mit Pullup)
-// 3. json prefix max 7 Zeichen, kann im Prinzip frei gesetzt werden
+// 2. type o=obis, s=sml, c=COUNTER (z.B. Gaszähler reed Kontakt)
+// 3. flag wenn 0 dann counter ohne Pullup, 1=mit Pullup
+// 4. params Baudrate bei serieller Schnittstelle, bei counter poll time in Millisekunden
+// 5. json prefix max 7 Zeichen, kann im Prinzip frei gesetzt werden
 // dieses Prefix wird sowohl in der Web Anzeige als auch in der MQTT Nachricht vorangestellt
 
 #if METER==EHZ161_0
 #define METERS_USED 1
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={0,'o',"OBIS"}};
+  [0]={0,'o',0,SML_BAUDRATE,"OBIS"}};
 const uint8_t meter[]=
 "1,1-0:1.8.0*255(@1," D_TPWRIN ",KWh," DJ_TPWRIN ",4|"
 "1,1-0:2.8.0*255(@1," D_TPWROUT ",KWh," DJ_TPWROUT ",4|"
@@ -209,7 +213,7 @@ const uint8_t meter[]=
 #if METER==EHZ161_1
 #define METERS_USED 1
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={0,'o',"OBIS"}};
+  [0]={0,'o',0,SML_BAUDRATE,"OBIS"}};
 const uint8_t meter[]=
 "1,1-0:1.8.1*255(@1," D_TPWRIN ",KWh," DJ_TPWRIN ",4|"
 "1,1-0:2.8.1*255(@1," D_TPWROUT ",KWh," DJ_TPWROUT ",4|"
@@ -222,7 +226,7 @@ const uint8_t meter[]=
 #if METER==EHZ363
 #define METERS_USED 1
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={0,'s',"SML"}};
+  [0]={0,'s',0,SML_BAUDRATE,"SML"}};
 // 2 Richtungszähler EHZ SML 8 bit 9600 baud, binär
 const uint8_t meter[]=
 //0x77,0x07,0x01,0x00,0x01,0x08,0x00,0xff
@@ -240,7 +244,7 @@ const uint8_t meter[]=
 #if METER==EHZH
 #define METERS_USED 1
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={0,'s',"SML"}};
+  [0]={0,'s',0,SML_BAUDRATE,"SML"}};
 // 2 Richtungszähler EHZ SML 8 bit 9600 baud, binär
 // verbrauch total
 const uint8_t meter[]=
@@ -257,7 +261,7 @@ const uint8_t meter[]=
 #if METER==EDL300
 #define METERS_USED 1
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={0,'s',"SML"}};
+  [0]={0,'s',0,SML_BAUDRATE,"SML"}};
 // 2 Richtungszähler EHZ SML 8 bit 9600 baud, binär
 // verbrauch total
 const uint8_t meter[]=
@@ -274,7 +278,7 @@ const uint8_t meter[]=
 #if METER==Q3B
 #define METERS_USED 1
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={0,'s',"SML"}};
+  [0]={0,'s',0,SML_BAUDRATE,"SML"}};
 const uint8_t meter[]=
 //0x77,0x07,0x01,0x00,0x01,0x08,0x01,0xff
 "1,77070100010800ff@100," D_TPWRIN ",KWh," DJ_TPWRIN ",4|"
@@ -289,9 +293,9 @@ const uint8_t meter[]=
 #define METERS_USED 3
 
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={3,'o',"OBIS"}, // harware serial RX pin
-  [1]={14,'s',"SML"}, // GPIO14 software serial
-  [2]={4,'o',"OBIS2"}}; // GPIO4 software serial
+  [0]={3,'o',0,SML_BAUDRATE,"OBIS"}, // harware serial RX pin
+  [1]={14,'s',0,SML_BAUDRATE,"SML"}, // GPIO14 software serial
+  [2]={4,'o',0,SML_BAUDRATE,"OBIS2"}}; // GPIO4 software serial
 
 // 3 Zähler definiert
 const uint8_t meter[]=
@@ -317,8 +321,8 @@ const uint8_t meter[]=
 #define METERS_USED 2
 
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={3,'o',"OBIS1"}, // harware serial RX pin
-  [1]={14,'o',"OBIS2"}}; // GPIO14 software serial
+  [0]={3,'o',0,SML_BAUDRATE,"OBIS1"}, // harware serial RX pin
+  [1]={14,'o',0,SML_BAUDRATE,"OBIS2"}}; // GPIO14 software serial
 
 // 2 Zähler definiert
 const uint8_t meter[]=
@@ -338,9 +342,9 @@ const uint8_t meter[]=
 #define METERS_USED 3
 
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={3,'o',"OBIS1"}, // harware serial RX pin
-  [1]={14,'o',"OBIS2"},
-  [2]={1,'o',"OBIS3"}};
+  [0]={3,'o',0,SML_BAUDRATE,"OBIS1"}, // harware serial RX pin
+  [1]={14,'o',0,SML_BAUDRATE,"OBIS2"},
+  [2]={1,'o',0,SML_BAUDRATE,"OBIS3"}};
 
 // 3 Zähler definiert
 const uint8_t meter[]=
@@ -367,7 +371,7 @@ const uint8_t meter[]=
 #if METER==Q3B_V1
 #define METERS_USED 1
 struct METER_DESC const meter_desc[METERS_USED]={
-[0]={0,'o',"OBIS"}};
+[0]={0,'o',0,SML_BAUDRATE,"OBIS"}};
 const uint8_t meter[]=
 "1,1-0:1.8.1*255(@1," D_TPWRIN ",KWh," DJ_TPWRIN ",4|"
 "1,=d 1 10 @1," D_TPWRCURR ",W," DJ_TPWRCURR ",0|"
@@ -379,7 +383,7 @@ const uint8_t meter[]=
 #if METER==EHZ363_2
 #define METERS_USED 1
 struct METER_DESC const meter_desc[METERS_USED]={
-[0]={0,'s',"SML"}};
+[0]={0,'s',0,SML_BAUDRATE,"SML"}};
 // 2 Richtungszähler EHZ SML 8 bit 9600 baud, binär
 const uint8_t meter[]=
 //0x77,0x07,0x01,0x00,0x01,0x08,0x00,0xff
@@ -400,9 +404,9 @@ const uint8_t meter[]=
 #if METER==COMBO3b
 #define METERS_USED 3
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={3,'o',"OBIS"}, // harware serial RX pin
-  [1]={14,'c',"Gas"}, // GPIO14 gas counter
-  [2]={1,'c',"Wasser"}}; // water counter
+  [0]={3,'o',0,SML_BAUDRATE,"OBIS"}, // harware serial RX pin
+  [1]={14,'c',0,50,"Gas"}, // GPIO14 gas counter
+  [2]={1,'c',0,10,"Wasser"}}; // water counter
 
 // 3 Zähler definiert
 const uint8_t meter[]=
@@ -422,9 +426,9 @@ const uint8_t meter[]=
 #define METERS_USED 3
 
 struct METER_DESC const meter_desc[METERS_USED]={
-  [0]={1,'c',"H20"}, // GPIO1 Wasser Zähler
-  [1]={4,'c',"GAS"}, // GPIO4 gas Zähler
-  [2]={3,'s',"SML"}}; // SML harware serial RX pin
+  [0]={1,'c',0,10,"H20"}, // GPIO1 Wasser Zähler
+  [1]={4,'c',0,50,"GAS"}, // GPIO4 gas Zähler
+  [2]={3,'s',0,SML_BAUDRATE,"SML"}}; // SML harware serial RX pin
 
 const uint8_t meter[]=
 //----------------------------Wasserzähler--sensor95 c1------------------------------------
@@ -813,45 +817,13 @@ double xCharToDouble(const char *str)
   return result;
 }
 
-uint8_t sml_cnt_debounce[MAX_COUNTERS];
-uint8_t sml_cnt_old_state[MAX_COUNTERS];
 
 // polled every 50 ms
 void SML_Poll(void) {
-    uint16_t count,meters,cindex=0;
+    uint16_t count,meters;
 
     for (meters=0; meters<METERS_USED; meters++) {
-      if (tolower(meter_desc[meters].type)=='c') {
-        // poll for counters and debouce
-#ifdef GAS_LED
-        pinMode(GAS_LED, OUTPUT);
-        if (digitalRead(meter_desc[meters].srcpin)) {
-            digitalWrite(GAS_LED,HIGH);
-        } else {
-            digitalWrite(GAS_LED,LOW);
-        }
-#endif
-        uint8_t state;
-        sml_cnt_debounce[cindex]<<=1;
-        sml_cnt_debounce[cindex]|=(digitalRead(meter_desc[meters].srcpin)&1)|0x80;
-        if (sml_cnt_debounce[cindex]==0xc0) {
-          // is 1
-          state=1;
-        } else {
-          // is 0, means switch down
-          state=0;
-        }
-        if (sml_cnt_old_state[cindex]!=state) {
-          // state has changed
-          sml_cnt_old_state[cindex]=state;
-          if (state==0) {
-            // inc counter
-            RtcSettings.pulse_counter[cindex]++;
-            InjektCounterValue(meters,RtcSettings.pulse_counter[cindex]);
-          }
-        }
-        cindex++;
-      } else {
+      if (meter_desc[meters].type!='c') {
         // poll for serial input
         if (!meter_desc[meters].srcpin || meter_desc[meters].srcpin==3) {
           while (Serial.available()) {
@@ -1011,7 +983,7 @@ void SML_Decode(uint8_t index) {
       // compare value
       uint8_t found=1;
       while (*mp!='@') {
-        if (meter_desc[mindex].type=='o' || tolower(meter_desc[mindex].type)=='c') {
+        if (meter_desc[mindex].type=='o' || meter_desc[mindex].type=='c') {
           if (*mp++!=*cp++) {
             found=0;
           }
@@ -1043,7 +1015,7 @@ void SML_Decode(uint8_t index) {
         } else {
           double dval;
           // get numeric values
-          if (meter_desc[mindex].type=='o' || tolower(meter_desc[mindex].type)=='c') {
+          if (meter_desc[mindex].type=='o' || meter_desc[mindex].type=='c') {
             dval=xCharToDouble((char*)cp);
           } else {
             dval=sml_getvalue(cp,mindex);
@@ -1230,16 +1202,21 @@ void SML_Show(boolean json) {
 }
 
 
+uint8_t sml_cnt_debounce[MAX_COUNTERS];
+uint8_t sml_cnt_old_state[MAX_COUNTERS];
+uint32_t sml_cnt_last_ts[MAX_COUNTERS];
+
 void SML_Init(void) {
   uint8_t cindex=0;
   // preloud counters
   for (byte i = 0; i < MAX_COUNTERS; i++) {
       RtcSettings.pulse_counter[i]=Settings.pulse_counter[i];
+      sml_cnt_last_ts[i]=millis();
   }
   for (uint8_t meters=0; meters<METERS_USED; meters++) {
-    if (tolower(meter_desc[meters].type)=='c') {
+    if (meter_desc[meters].type=='c') {
         // counters, set to input with pullup
-        if (meter_desc[meters].type=='C') {
+        if (meter_desc[meters].flag&1) {
           pinMode(meter_desc[meters].srcpin,INPUT_PULLUP);
         } else {
           pinMode(meter_desc[meters].srcpin,INPUT);
@@ -1250,20 +1227,65 @@ void SML_Init(void) {
       // serial input, init
       if (!meter_desc[meters].srcpin || meter_desc[meters].srcpin==3) {
         ClaimSerial();
-        SetSerialBaudrate(SML_BAUDRATE);
+        SetSerialBaudrate(meter_desc[meters].params);
       } else {
 #ifdef SPECIAL_SS
         meter_ss[meters] = new TasmotaSerial(meter_desc[meters].srcpin,-1,0,1);
 #else
         meter_ss[meters] = new TasmotaSerial(meter_desc[meters].srcpin,-1);
 #endif
-        if (meter_ss[meters]->begin(SML_BAUDRATE)) {
+        if (meter_ss[meters]->begin(meter_desc[meters].params)) {
           meter_ss[meters]->flush();
         }
       }
     }
   }
 
+}
+
+
+// fast counter polling
+void SML_Counter_Poll(void) {
+uint16_t meters,cindex=0;
+
+  for (meters=0; meters<METERS_USED; meters++) {
+    uint32_t ctime=millis();
+    if (meter_desc[meters].type=='c') {
+      // poll for counters and debouce
+      if (ctime-sml_cnt_last_ts[cindex]>meter_desc[meters].params) {
+        // poll
+        sml_cnt_last_ts[cindex]=millis();
+  #ifdef GAS_LED
+        pinMode(GAS_LED, OUTPUT);
+        if (digitalRead(meter_desc[meters].srcpin)) {
+            digitalWrite(GAS_LED,HIGH);
+        } else {
+            digitalWrite(GAS_LED,LOW);
+        }
+  #endif
+        uint8_t state;
+        sml_cnt_debounce[cindex]<<=1;
+        sml_cnt_debounce[cindex]|=(digitalRead(meter_desc[meters].srcpin)&1)|0x80;
+        if (sml_cnt_debounce[cindex]==0xc0) {
+          // is 1
+          state=1;
+        } else {
+          // is 0, means switch down
+          state=0;
+        }
+        if (sml_cnt_old_state[cindex]!=state) {
+          // state has changed
+          sml_cnt_old_state[cindex]=state;
+          if (state==0) {
+            // inc counter
+            RtcSettings.pulse_counter[cindex]++;
+            InjektCounterValue(meters,RtcSettings.pulse_counter[cindex]);
+          }
+        }
+      }
+      cindex++;
+    }
+  }
 }
 
 #ifdef SML_SEND_SEQ
@@ -1321,7 +1343,7 @@ bool XSNS_95_cmd(void) {
             RtcSettings.pulse_counter[index-1]=cval;
             uint8_t cindex=0;
             for (uint8_t meters=0; meters<METERS_USED; meters++) {
-              if (tolower(meter_desc[meters].type)=='c') {
+              if (meter_desc[meters].type=='c') {
                 InjektCounterValue(meters,RtcSettings.pulse_counter[cindex]);
                 cindex++;
               }
@@ -1354,6 +1376,9 @@ boolean Xsns95(byte function) {
     switch (function) {
       case FUNC_INIT:
         SML_Init();
+        break;
+      case FUNC_LOOP:
+        SML_Counter_Poll();
         break;
       case FUNC_EVERY_50_MSECOND:
         if (dump2log) Dump2log();
