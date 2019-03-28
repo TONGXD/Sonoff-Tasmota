@@ -1059,9 +1059,9 @@ void SML_Decode(uint8_t index) {
     }
 nextsect:
     // next section
-    vindex++;
-    // should never happen!
-    if (vindex>=MAX_VARS) return;
+    if (vindex<MAX_VARS-1) {
+      vindex++;
+    }
     mp = strchr(mp, '|');
     if (mp) mp++;
   }
@@ -1216,7 +1216,7 @@ void SML_Show(boolean json) {
             }
           }
         }
-        if (index<MAX_VARS) {
+        if (index<MAX_VARS-1) {
           index++;
         }
         // next section
