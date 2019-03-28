@@ -81,6 +81,7 @@ die älteren werden nicht mehr unterstützt.
 #define D_Spannung_L2 "Spannung L2"
 #define D_Spannung_L3 "Spannung L3"
 #define D_METERNR "Zähler Nr"
+#define D_METERSID "Service ID"
 #define D_GasIN "Zählerstand"                // Gas-Verbrauch
 #define D_H2oIN "Zählerstand"                // H2o-Verbrauch
 #define D_StL1L2L3 "Ströme L1+L2+L3"
@@ -101,6 +102,7 @@ die älteren werden nicht mehr unterstützt.
 #define D_Spannung_L2 "Voltage L2"
 #define D_Spannung_L3 "Voltage L3"
 #define D_METERNR "Meter_number"
+#define D_METERSID "Service ID"
 #define D_GasIN "Counter"                // Gas-Verbrauch
 #define D_H2oIN "Counter"                // H2o-Verbrauch
 #define D_StL1L2L3 "Current L1+L2+L3"
@@ -123,6 +125,7 @@ die älteren werden nicht mehr unterstützt.
 #define DJ_VOLT2 "Volt_p2"
 #define DJ_VOLT3 "Volt_p3"
 #define DJ_METERNR "Meter_number"
+#define DJ_METERSID "Meter_id"
 #define DJ_CSUM "Curr_summ"
 #define DJ_VAVG "Volt_avg"
 #define DJ_COUNTER "Count"
@@ -465,7 +468,7 @@ const uint8_t meter[]=
 "3,77070100480700ff@100," D_Spannung_L3 ",V," DJ_VOLT3 ",2|"  // 15 Spannung L3
 "3,=h==================|"
 //0x77,0x07,0x01,0x00,0x00,0x00,0x09,0xff
-"3,77070100000009ff@#," D_METERNR ",," DJ_METERNR ",0|"             // 16 Service ID
+"3,77070100000009ff@#," D_METERSID ",," DJ_METERSID ",0|"           // 16 Service ID
 "3,=h--------------------------------";                             // letzte Zeile
 #endif
 
@@ -742,7 +745,7 @@ int64_t value;
             } else {
                 // server id on hager
                 char *str=&meter_id[index][0];
-                for (type=0; type<len; type++) {
+                for (type=0; type<len-1; type++) {
                     sprintf(str,"%02x",*cp++);
                     str+=2;
                 }
