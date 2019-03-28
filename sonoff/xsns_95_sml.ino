@@ -125,7 +125,7 @@ die älteren werden nicht mehr unterstützt.
 #define DJ_METERNR "Meter_number"
 #define DJ_CSUM "Curr_summ"
 #define DJ_VAVG "Volt_avg"
-#define DJ_COUNTER "Counter"
+#define DJ_COUNTER "Count"
 
 struct METER_DESC {
   uint8_t srcpin;
@@ -1216,9 +1216,9 @@ void SML_Show(boolean json) {
             }
           }
         }
-        index++;
-        // should never happen!
-        if (index>=MAX_VARS) return;
+        if (index<MAX_VARS) {
+          index++;
+        }
         // next section
         mp = strchr(cp, '|');
         if (mp) mp++;
