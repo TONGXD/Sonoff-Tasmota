@@ -738,10 +738,10 @@ int64_t value;
                 s1=*cp<<16|*(cp+1)<<8|*(cp+2);
                 cp+=4;
                 s2=*cp<<16|*(cp+1)<<8|*(cp+2);
-                sprintf(&meter_id[0][0],"%u-%u",s1,s2);
+                sprintf(&meter_id[index][0],"%u-%u",s1,s2);
             } else {
                 // server id on hager
-                char *str=&meter_id[0][0];
+                char *str=&meter_id[index][0];
                 for (type=0; type<len; type++) {
                     sprintf(str,"%02x",*cp++);
                     str+=2;
