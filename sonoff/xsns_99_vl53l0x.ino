@@ -35,7 +35,7 @@ uint8_t vl53l0x_ready = 0;
 uint16_t vl53l0x_distance;
 uint16_t Vl53l0_buffer[5];
 uint8_t Vl53l0_index;
-uint8_t Vl53l0_cnt;
+
 
 /********************************************************************************************/
 
@@ -70,13 +70,11 @@ const char HTTP_SNS_VL53L0X[] PROGMEM =
  "%s{s}VL53L0X " D_DISTANCE "{m}%d" D_UNIT_MILLIMETER "{e}"; // {s} = <tr><th>, {m} = </th><td>, {e} = </td></tr>
 #endif  // USE_WEBSERVER
 
-void Vl53l0Every_50MSecond() {
+void Vl53l0Every_200MSecond() {
   uint16_t tbuff[5],tmp;
   uint8_t flag;
 
-  Vl53l0_cnt++;
-  if (Vl53l0_cnt<4) return;
-  Vl53l0_cnt=0;
+  if (!vl53l0x_ready) return;
 
   // every 200 ms
   uint16_t dist = sensor.readRangeContinuousMillimeters();
@@ -135,8 +133,8 @@ boolean Xsns99(byte function)
       case FUNC_INIT:
         Vl53l0Detect();
         break;
-      case FUNC_EVERY_50_MSECOND:
-        Vl53l0Every_50MSecond();
+      case FUNC_EVERY_200_MSECOND:
+        Vl53l0Every_200MSecond();
         break;
       case FUNC_JSON_APPEND:
         Vl53l0Show(1);

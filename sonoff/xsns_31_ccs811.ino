@@ -41,7 +41,7 @@ uint8_t ecnt = 0;
 
 /********************************************************************************************/
 #define EVERYNSECONDS 5
-#define CCS811_DEBUG
+//#define CCS811_DEBUG
 void CCS811Update(void)  // Perform every n second
 {
   tcnt++;
@@ -70,11 +70,7 @@ void CCS811Update(void)  // Perform every n second
           TVOC = ccs.getTVOC();
           eCO2 = ccs.geteCO2();
           CCS811_ready = 1;
-          if (global_update) {
-            ccs.setEnvironmentalData((uint8_t)global_humidity, global_temperature);
-          } else {
-            ccs.setEnvironmentalData(50,25.0);
-          }
+          if (global_update) {ccs.setEnvironmentalData((uint8_t)global_humidity, global_temperature);}
           ecnt = 0;
         }
       } else {

@@ -266,7 +266,7 @@ void Adafruit_CCS811::read(uint8_t reg, uint8_t *buf, uint8_t num)
 		Wire.beginTransmission((uint8_t)_i2caddr);
 		Wire.write((uint8_t)reg + pos);
 		Wire.endTransmission();
-		delayMicroseconds(50); // maarten pennings
+		//delayMicroseconds(50); // maarten pennings
 		Wire.requestFrom((uint8_t)_i2caddr, read_now);
 
 		for(int i=0; i<read_now; i++){
