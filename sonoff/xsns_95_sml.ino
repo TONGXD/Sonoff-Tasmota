@@ -545,6 +545,7 @@ double median(struct MEDIAN_FILTER* mf, double in) {
 #endif
 
 #ifdef ANALOG_OPTO_SENSOR
+// sensor über AD Konverter ADS1115 an i2c Bus
 uint8_t ads1115_up;
 
 // ads1115 driver
@@ -604,14 +605,15 @@ enum ads1115_mode {
 };
 
 enum ads1115_pga {
-	ADS1115_PGA_TWO_THIRDS = 0,
-	ADS1115_PGA_ONE = 0x1 << ADS1115_PGA_SHIFT,
-	ADS1115_PGA_TWO = 0x2 << ADS1115_PGA_SHIFT,
-	ADS1115_PGA_FOUR = 0x3 << ADS1115_PGA_SHIFT,
-	ADS1115_PGA_EIGHT = 0x4 << ADS1115_PGA_SHIFT,
-	ADS1115_PGA_SIXTEEN = 0x5 << ADS1115_PGA_SHIFT,
+	ADS1115_PGA_TWO_THIRDS = 0, //±6.144 V
+	ADS1115_PGA_ONE = 0x1 << ADS1115_PGA_SHIFT, //±4.096 V
+	ADS1115_PGA_TWO = 0x2 << ADS1115_PGA_SHIFT, //±2.048 V
+	ADS1115_PGA_FOUR = 0x3 << ADS1115_PGA_SHIFT, //±1.024 V
+	ADS1115_PGA_EIGHT = 0x4 << ADS1115_PGA_SHIFT, //±0.512 V
+	ADS1115_PGA_SIXTEEN = 0x5 << ADS1115_PGA_SHIFT, //±0.256 V
 	ADS1115_PGA_MASK = 0x7 << ADS1115_PGA_SHIFT,
 };
+
 
 enum ads1115_mux {
 	ADS1115_MUX_DIFF_AIN0_AIN1 = 0,
@@ -759,7 +761,7 @@ void ADS1115_init(void) {
   adc.begin();
   adc.set_data_rate(ADS1115_DATA_RATE_128_SPS);
   adc.set_mode(ADS1115_MODE_CONTINUOUS);
-  adc.set_mux(ADS1115_MUX_GND_AIN1);
+  adc.set_mux(ADS1115_MUX_DIFF_AIN0_AIN3);
   adc.set_pga(ADS1115_PGA_TWO);
 
   int16_t val = adc.read_sample();
