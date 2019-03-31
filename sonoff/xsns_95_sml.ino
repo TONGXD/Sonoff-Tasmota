@@ -423,9 +423,9 @@ const uint8_t meter[]=
 "1,1-0:0.0.0*255(@#)," D_METERNR ",," DJ_METERNR ",0|"
 
 // bei gaszählern (countern) muss der Vergleichsstring so aussehen wie hier
-"2,1-0:1.8.0*255(@100," D_TPWRIN ",cbm," DJ_TPWRIN ",2|"
+"2,1-0:1.8.0*255(@100," D_GasIN ",cbm," DJ_COUNTER ",2|"
 
-"3,1-0:1.8.0*255(@100," D_TPWRIN ",cbm," DJ_TPWRIN ",2";
+"3,1-0:1.8.0*255(@100," D_H2oIN ",cbm," DJ_COUNTER ",2";
 #endif
 
 
@@ -453,9 +453,9 @@ const uint8_t meter[]=
 //0x77,0x07,0x01,0x00,0x10,0x07,0x00,0xff
 "3,77070100100700ff@1," D_TPWRCURR ",W," DJ_TPWRCURR ",2|"          // 4  Aktuelle Leistung
 "3,=h -------------------------------|"
-"3,=m 10+11+12 @100," D_StL1L2L3 ",A," DJ_CSUM ",2|"            // 5  Summe Aktuelle Ströme (#define DJ_StL1L2L3 "Ströme" | #define D_StL1L2L3 "Ströme")
+"3,=m 10+11+12 @100," D_StL1L2L3 ",A," DJ_CSUM ",2|"            // 5  Summe Aktuelle Ströme
 //"3,=h -------------------------------|"
-"3,=m 13+14+15/#3 @100," D_SpL1L2L3 ",V," DJ_VAVG ",2|"      // 6   Mittelwert Spannungen (#define DJ_SpL1L2L3 "Spannung" | #define D_SpL1L2L3 "Spannung L1+L2+L3")
+"3,=m 13+14+15/#3 @100," D_SpL1L2L3 ",V," DJ_VAVG ",2|"      // 6   Mittelwert Spannungen
 "3,=h==================|"
 //0x77,0x07,0x01,0x00,0x24,0x07,0x00,0xff
 "3,77070100240700ff@1," D_TPWRCURR1 ",W," DJ_TPWRCURR1 ",2|"        // 7  Wirkleistung L1
