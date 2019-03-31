@@ -43,18 +43,21 @@ die älteren werden nicht mehr unterstützt.
 // Baudrate des D0 Ausgangs, sollte bei den meisten Zählern 9600 sein
 #define SML_BAUDRATE 9600
 
-// send this every N seconds
+// sende dies alle N Sekunden, für Zähler die erst auf Anforderung etwas senden
 //#define SML_SEND_SEQ
+
 // debug counter input to led for counter1 and 2
 //#define DEBUG_CNT_LED1 2
 //#define DEBUG_CNT_LED1 2
 
-// use optical counter sensor with AD Converter ADS1115
+// use analog optical counter sensor with AD Converter ADS1115
 //#define ANALOG_OPTO_SENSOR
+// fototransistor mit pullup an A0, A1 des ADS1115 A3 and +3.3V
+// die pegel und die verstärkung können dann automatisch kalibriert werden
 
 
 // support für mehr als 2 Meter mit spezieller Tasmota Serial Version
-// dazu muss der neue Treiber => TasmotaSerial-2.3.0 ebenfalls kopiert werden
+// dazu muss der modifizierte Treiber => TasmotaSerial-2.3.0 ebenfalls kopiert werden
 
 #include <TasmotaSerial.h>
 
@@ -192,8 +195,8 @@ struct METER_DESC {
 // entsprechend viele Einträge muss der METER_DESC dann haben (für jeden Zähler einen)
 // 1. srcpin der pin für den seriellen input 0 oder 3 => RX pin, ansonsten software serial GPIO pin
 // 2. type o=obis, s=sml, c=COUNTER (z.B. Gaszähler reed Kontakt)
-// 3. flag wenn 0 dann counter ohne Pullup, 1=mit Pullup
-// 4. params Baudrate bei serieller Schnittstelle, bei counter poll time in Millisekunden
+// 3. flag wenn 0 dann counter ohne Pullup, 1=mit Pullup, 2=beutze AD Konverter ADS1115 an i2c Schnittstelle
+// 4. params Baudrate bei serieller Schnittstelle, bei counter poll time in Millisekunden, bei ADS1115 Abtastrate
 // 5. json prefix max 7 Zeichen, kann im Prinzip frei gesetzt werden
 // dieses Prefix wird sowohl in der Web Anzeige als auch in der MQTT Nachricht vorangestellt
 
