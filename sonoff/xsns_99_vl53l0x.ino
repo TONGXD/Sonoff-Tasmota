@@ -41,12 +41,19 @@ uint8_t Vl53l0_index;
 
 void Vl53l0Detect()
 {
+
   if (vl53l0x_ready) {
     AddLog_P(LOG_LEVEL_DEBUG, PSTR("VL53L1X is ready"));
     return;
   }
 
-  sensor.init();
+  if (sensor.init()==true) {
+    snprintf_P(log_data, sizeof(log_data), S_LOG_I2C_FOUND_AT, "VL53L0X", sensor.getAddress());
+    AddLog(LOG_LEVEL_DEBUG);
+  } else {
+    return;
+  }
+
   sensor.setTimeout(500);
 
   // Start continuous back-to-back mode (take readings as
@@ -57,10 +64,9 @@ void Vl53l0Detect()
   vl53l0x_ready = 1;
 
   Vl53l0_index=0;
-  Vl53l0_cnt=0;
+  //Vl53l0_cnt=0;
 
-  snprintf_P(log_data, sizeof(log_data), S_LOG_I2C_FOUND_AT, "VL53L0X", sensor.getAddress());
-  AddLog(LOG_LEVEL_DEBUG);
+
 }
 
 #define D_UNIT_MILLIMETER "mm"
