@@ -76,7 +76,7 @@ const char HTTP_SNS_VL53L0X[] PROGMEM =
  "%s{s}VL53L0X " D_DISTANCE "{m}%d" D_UNIT_MILLIMETER "{e}"; // {s} = <tr><th>, {m} = </th><td>, {e} = </td></tr>
 #endif  // USE_WEBSERVER
 
-void Vl53l0Every_200MSecond() {
+void Vl53l0Every_250MSecond() {
   uint16_t tbuff[5],tmp;
   uint8_t flag;
 
@@ -139,8 +139,8 @@ boolean Xsns99(byte function)
       case FUNC_INIT:
         Vl53l0Detect();
         break;
-      case FUNC_EVERY_200_MSECOND:
-        Vl53l0Every_200MSecond();
+      case FUNC_EVERY_250_MSECOND:
+        Vl53l0Every_250MSecond();
         break;
       case FUNC_JSON_APPEND:
         Vl53l0Show(1);
