@@ -187,7 +187,7 @@ boolean HtuRead(void)
     htu_humidity = (-0.15) * (25 - htu_temperature) + htu_humidity;
   }
 
-  SetGlobalValues(htu_temperature, htu_humidity);
+  SetGlobalValues(htu_temperature, htu_humidity,0);
 
   htu_valid = SENSOR_MAX_MISS;
   return true;
@@ -307,4 +307,3 @@ boolean Xsns08(byte function)
 
 #endif  // USE_HTU
 #endif  // USE_I2C
-

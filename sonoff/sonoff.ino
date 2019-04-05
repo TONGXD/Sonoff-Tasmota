@@ -126,7 +126,9 @@ uint32_t uptime = 0;                        // Counting every second until 42949
 uint32_t loop_load_avg = 0;                 // Indicative loop load average
 uint32_t global_update = 0;                 // Timestamp of last global temperature and humidity update
 float global_temperature = 0;               // Provide a global temperature to be used by some sensors
-float global_humidity = 0;                  // Provide a global humidity to be used by some sensors
+//float global_humidity = 0;                  // float is useless here 4 bytes, replaces by 2+2 for int
+uint16_t global_humidity = 0;               // Provide a global humidity to be used by some sensors
+uint16_t global_pressure = 0;                // Provide a global pressure to be used by some sensors
 char *ota_url;                              // OTA url string pointer
 uint16_t mqtt_cmnd_publish = 0;             // ignore flag for publish command
 uint16_t blink_counter = 0;                 // Number of blink cycles

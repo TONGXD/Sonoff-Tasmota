@@ -510,7 +510,7 @@ void BmpRead(void)
 #endif  // USE_BME680
     }
   }
-  SetGlobalValues(ConvertTemp(bmp_sensors[0].bmp_temperature), bmp_sensors[0].bmp_humidity);
+  SetGlobalValues(ConvertTemp(bmp_sensors[0].bmp_temperature), bmp_sensors[0].bmp_humidity,bmp_sensors[0].bmp_pressure);
 }
 
 void BmpEverySecond(void)
@@ -525,6 +525,37 @@ void BmpEverySecond(void)
   }
 }
 
+//#define USE_ABSOLUTE_HUMIDITY
+
+#ifdef USE_ABSOLUTE_HUMIDITY
+/****************************************************************/
+float AbsoluteHumidity(float temperature, float humidity,char tempUnit) {
+  //taken from https://carnotcycle.wordpress.com/2012/08/04/how-to-convert-relative-humidity-to-absolute-humidity/
+  //precision is about 0.1°C in range -30 to 35°C
+  //August-Roche-Magnus 	6.1094 exp(17.625 x T)/(T + 243.04)
+  //Buck (1981) 		6.1121 exp(17.502 x T)/(T + 240.97)
+  //reference https://www.eas.ualberta.ca/jdwilson/EAS372_13/Vomel_CIRES_satvpformulae.html
+  float temp = NAN;
+  const float mw = 18.01534; 	// molar mass of water g/mol
+  const float r = 8.31447215; 	// Universal gas constant J/mol/K
+
+  if (isnan(temperature) || isnan(humidity) ) {
+    return NAN;
+  }
+
+  if (tempUnit != 'C') {
+        temperature = (temperature - 32.0) * (5.0 / 9.0); /*conversion to [°C]*/
+  }
+
+  temp = pow(2.718281828, (17.67 * temperature) / (temperature + 243.5));
+
+  //return (6.112 * temp * humidity * 2.1674) / (273.15 + temperature); 	//simplified version
+  return (6.112 * temp * humidity * mw) / ((273.15 + temperature) * r); 	//long version
+}
+const char HTTP_SNS_AHUM[] PROGMEM = "%s{s}%s " "Abs Humidity" "{m}%s %s{e}";
+#endif
+
+
 void BmpShow(boolean json)
 {
   if (!bmp_sensors) { return; }
@@ -532,9 +563,18 @@ void BmpShow(boolean json)
   for (byte bmp_idx = 0; bmp_idx < bmp_count; bmp_idx++) {
     if (bmp_sensors[bmp_idx].bmp_type) {
       float bmp_sealevel = 0.0;
+#ifdef USE_ABSOLUTE_HUMIDITY
+      char abs_hum[33];
+#endif
       if (bmp_sensors[bmp_idx].bmp_pressure != 0.0) {
         bmp_sealevel = (bmp_sensors[bmp_idx].bmp_pressure / FastPrecisePow(1.0 - ((float)Settings.altitude / 44330.0), 5.255)) - 21.6;
         bmp_sealevel = ConvertPressure(bmp_sealevel);
+
+#ifdef USE_ABSOLUTE_HUMIDITY
+        float fabs_hum = AbsoluteHumidity(bmp_sensors[bmp_idx].bmp_humidity,bmp_sensors[bmp_idx].bmp_temperature,TempUnit());
+        dtostrfd(fabs_hum,4,abs_hum);
+#endif
+
       }
       float bmp_temperature = ConvertTemp(bmp_sensors[bmp_idx].bmp_temperature);
       float bmp_pressure = ConvertPressure(bmp_sensors[bmp_idx].bmp_pressure);
@@ -561,6 +601,9 @@ void BmpShow(boolean json)
       if (json) {
         char json_humidity[40];
         snprintf_P(json_humidity, sizeof(json_humidity), PSTR(",\"" D_JSON_HUMIDITY "\":%s"), humidity);
+#ifdef USE_ABSOLUTE_HUMIDITY
+        //snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s,\"%s\":{\"" "AbsHumidity" "\":%s%s,\"" D_JSON_PRESSURE "\":%s%s%s}"),
+#endif
         char json_sealevel[40];
         snprintf_P(json_sealevel, sizeof(json_sealevel), PSTR(",\"" D_JSON_PRESSUREATSEALEVEL "\":%s"), sea_pressure);
 #ifdef USE_BME680
@@ -579,6 +622,7 @@ void BmpShow(boolean json)
         snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s,\"%s\":{\"" D_JSON_TEMPERATURE "\":%s%s,\"" D_JSON_PRESSURE "\":%s%s}"),
           mqtt_data, name, temperature, (bmp_sensors[bmp_idx].bmp_model >= 2) ? json_humidity : "", pressure, (Settings.altitude != 0) ? json_sealevel : "");
 #endif  // USE_BME680
+
 
 #ifdef USE_DOMOTICZ
         if ((0 == tele_period) && (0 == bmp_idx)) {  // We want the same first sensor to report to Domoticz in case a read is missed
@@ -606,6 +650,9 @@ void BmpShow(boolean json)
         if (Settings.altitude != 0) {
           snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SNS_SEAPRESSURE, mqtt_data, name, sea_pressure, PressureUnit().c_str());
         }
+#ifdef USE_ABSOLUTE_HUMIDITY
+          snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SNS_AHUM, mqtt_data, name, abs_hum, "g/m3");
+#endif
 #ifdef USE_BME680
         if (bmp_sensors[bmp_idx].bmp_model >= 3) {
           snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s{s}%s " D_GAS "{m}%s " D_UNIT_KILOOHM "{e}"), mqtt_data, name, gas_resistance);

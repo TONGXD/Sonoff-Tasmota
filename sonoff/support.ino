@@ -555,11 +555,12 @@ gpio_flag ModuleFlag()
   return flag;
 }
 
-void SetGlobalValues(float temperature, float humidity)
+void SetGlobalValues(float temperature, uint16_t humidity, uint16_t pressure)
 {
   global_update = uptime;
   global_temperature = temperature;
-  global_humidity = humidity;
+  if (humidity>0) global_humidity = humidity;
+  if (pressure>0) global_pressure = pressure;
 }
 
 void ResetGlobalValues(void)
@@ -568,6 +569,7 @@ void ResetGlobalValues(void)
     global_update = 0;
     global_temperature = 0;
     global_humidity = 0;
+    global_pressure = 0;
   }
 }
 

@@ -38,23 +38,55 @@ uint8_t sgp30_counter = 0;
 
 /********************************************************************************************/
 
+void sgp30_Init(void) {
+  if (sgp.begin()) {
+    sgp30_type = 1;
+//      snprintf_P(log_data, sizeof(log_data), PSTR("SGP: Serialnumber 0x%04X-0x%04X-0x%04X"), sgp.serialnumber[0], sgp.serialnumber[1], sgp.serialnumber[2]);
+//      AddLog(LOG_LEVEL_DEBUG);
+    snprintf_P(log_data, sizeof(log_data), S_LOG_I2C_FOUND_AT, "SGP30", 0x58);
+    AddLog(LOG_LEVEL_DEBUG);
+  }
+}
+
+float sgp30_AbsoluteHumidity(float temperature, float humidity,char tempUnit) {
+  //taken from https://carnotcycle.wordpress.com/2012/08/04/how-to-convert-relative-humidity-to-absolute-humidity/
+  //precision is about 0.1°C in range -30 to 35°C
+  //August-Roche-Magnus 	6.1094 exp(17.625 x T)/(T + 243.04)
+  //Buck (1981) 		6.1121 exp(17.502 x T)/(T + 240.97)
+  //reference https://www.eas.ualberta.ca/jdwilson/EAS372_13/Vomel_CIRES_satvpformulae.html
+  float temp = NAN;
+  const float mw = 18.01534; 	// molar mass of water g/mol
+  const float r = 8.31447215; 	// Universal gas constant J/mol/K
+
+  if (isnan(temperature) || isnan(humidity) ) {
+    return NAN;
+  }
+
+  if (tempUnit != 'C') {
+        temperature = (temperature - 32.0) * (5.0 / 9.0); /*conversion to [°C]*/
+  }
+
+  temp = pow(2.718281828, (17.67 * temperature) / (temperature + 243.5));
+
+  //return (6.112 * temp * humidity * 2.1674) / (273.15 + temperature); 	//simplified version
+  return (6.112 * temp * humidity * mw) / ((273.15 + temperature) * r); 	//long version
+}
+
 void Sgp30Update(void)  // Perform every second to ensure proper operation of the baseline compensation algorithm
 {
   sgp30_ready = 0;
-  if (!sgp30_type) {
-    if (sgp.begin()) {
-      sgp30_type = 1;
-//      snprintf_P(log_data, sizeof(log_data), PSTR("SGP: Serialnumber 0x%04X-0x%04X-0x%04X"), sgp.serialnumber[0], sgp.serialnumber[1], sgp.serialnumber[2]);
-//      AddLog(LOG_LEVEL_DEBUG);
-      snprintf_P(log_data, sizeof(log_data), S_LOG_I2C_FOUND_AT, "SGP30", 0x58);
-      AddLog(LOG_LEVEL_DEBUG);
-    }
+  if (!sgp30_type && (21 == (uptime %100))) {
+    sgp30_Init();
   } else {
     if (!sgp.IAQmeasure()) return;  // Measurement failed
     sgp30_counter++;
     if (30 == sgp30_counter) {
       sgp30_counter = 0;
 
+      if (global_update) {
+        // fixed point value /256
+        sgp.setHumidity(sgp30_AbsoluteHumidity(global_humidity,global_temperature,TempUnit())*256);
+      }
       uint16_t TVOC_base;
       uint16_t eCO2_base;
 
@@ -70,9 +102,17 @@ const char HTTP_SNS_SGP30[] PROGMEM = "%s"
   "{s}SGP30 " D_ECO2 "{m}%d " D_UNIT_PARTS_PER_MILLION "{e}"                // {s} = <tr><th>, {m} = </th><td>, {e} = </td></tr>
   "{s}SGP30 " D_TVOC "{m}%d " D_UNIT_PARTS_PER_BILLION "{e}";
 
+const char HTTP_SNS_AHUM[] PROGMEM = "%s{s}SGP30 " "Abs Humidity" "{m}%s g/m3{e}";
+
 void Sgp30Show(boolean json)
 {
   if (sgp30_ready) {
+    char abs_hum[33];
+
+    if (global_update) {
+      // has humidity + temperature
+      dtostrfd(sgp30_AbsoluteHumidity(global_humidity,global_temperature,TempUnit()),4,abs_hum);
+    }
     if (json) {
       snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s,\"SGP30\":{\"" D_JSON_ECO2 "\":%d,\"" D_JSON_TVOC "\":%d}"), mqtt_data, sgp.eCO2, sgp.TVOC);
 #ifdef USE_DOMOTICZ
@@ -81,6 +121,9 @@ void Sgp30Show(boolean json)
 #ifdef USE_WEBSERVER
     } else {
       snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SNS_SGP30, mqtt_data, sgp.eCO2, sgp.TVOC);
+      if (global_update) {
+        snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SNS_AHUM, mqtt_data, abs_hum);
+      }
 #endif
     }
   }
@@ -96,6 +139,9 @@ boolean Xsns21(byte function)
 
   if (i2c_flg) {
     switch (function) {
+      case FUNC_INIT:
+        sgp30_Init();
+        break;
       case FUNC_EVERY_SECOND:
         Sgp30Update();
         break;
