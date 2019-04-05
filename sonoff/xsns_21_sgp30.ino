@@ -104,6 +104,8 @@ const char HTTP_SNS_SGP30[] PROGMEM = "%s"
 
 const char HTTP_SNS_AHUM[] PROGMEM = "%s{s}SGP30 " "Abs Humidity" "{m}%s g/m3{e}";
 
+#define D_JSON_aHUMIDITY "aHumidity"
+
 void Sgp30Show(boolean json)
 {
   if (sgp30_ready) {
@@ -114,7 +116,11 @@ void Sgp30Show(boolean json)
       dtostrfd(sgp30_AbsoluteHumidity(global_humidity,global_temperature,TempUnit()),4,abs_hum);
     }
     if (json) {
-      snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s,\"SGP30\":{\"" D_JSON_ECO2 "\":%d,\"" D_JSON_TVOC "\":%d}"), mqtt_data, sgp.eCO2, sgp.TVOC);
+      snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s,\"SGP30\":{\"" D_JSON_ECO2 "\":%d,\"" D_JSON_TVOC "\":%d"), mqtt_data, sgp.eCO2, sgp.TVOC);
+      if (global_update) {
+        snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s,\"" D_JSON_aHUMIDITY "\":%s"),mqtt_data,abs_hum);
+      }
+      snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s}"),mqtt_data);
 #ifdef USE_DOMOTICZ
       if (0 == tele_period) DomoticzSensor(DZ_AIRQUALITY, sgp.eCO2);
 #endif  // USE_DOMOTICZ
