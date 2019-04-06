@@ -85,7 +85,7 @@ void Sgp30Update(void)  // Perform every second to ensure proper operation of th
 
       if (global_update) {
         // abs hum in mg/m3
-        sgp.setHumidity(sgp30_AbsoluteHumidity(global_humidity,global_temperature,TempUnit())*1000);
+        sgp.setHumidity(sgp30_AbsoluteHumidity(global_temperature,global_humidity,TempUnit())*1000);
       }
       uint16_t TVOC_base;
       uint16_t eCO2_base;
@@ -113,7 +113,7 @@ void Sgp30Show(boolean json)
 
     if (global_update) {
       // has humidity + temperature
-      dtostrfd(sgp30_AbsoluteHumidity(global_humidity,global_temperature,TempUnit()),4,abs_hum);
+      dtostrfd(sgp30_AbsoluteHumidity(global_temperature,global_humidity,TempUnit()),4,abs_hum);
     }
     if (json) {
       snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s,\"SGP30\":{\"" D_JSON_ECO2 "\":%d,\"" D_JSON_TVOC "\":%d"), mqtt_data, sgp.eCO2, sgp.TVOC);
