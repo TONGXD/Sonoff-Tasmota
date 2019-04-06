@@ -84,8 +84,8 @@ void Sgp30Update(void)  // Perform every second to ensure proper operation of th
       sgp30_counter = 0;
 
       if (global_update) {
-        // fixed point value /256
-        sgp.setHumidity(sgp30_AbsoluteHumidity(global_humidity,global_temperature,TempUnit())*256);
+        // abs hum in mg/m3
+        sgp.setHumidity(sgp30_AbsoluteHumidity(global_humidity,global_temperature,TempUnit())*1000);
       }
       uint16_t TVOC_base;
       uint16_t eCO2_base;
