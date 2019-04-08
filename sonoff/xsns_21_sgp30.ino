@@ -34,7 +34,6 @@ Adafruit_SGP30 sgp;
 
 uint8_t sgp30_type = 0;
 uint8_t sgp30_ready = 0;
-uint8_t sgp30_counter = 0;
 float sgp30_abshum;
 
 /********************************************************************************************/
@@ -73,30 +72,35 @@ float sgp30_AbsoluteHumidity(float temperature, float humidity,char tempUnit) {
   return (6.112 * temp * humidity * mw) / ((273.15 + temperature) * r); 	//long version
 }
 
+#define SAVE_PERIOD 30
+
 void Sgp30Update(void)  // Perform every second to ensure proper operation of the baseline compensation algorithm
 {
   sgp30_ready = 0;
-  if (!sgp30_type && (21 == (uptime %100))) {
-    sgp30_Init();
-  } else {
-    if (!sgp.IAQmeasure()) return;  // Measurement failed
-    sgp30_counter++;
-    if (30 == sgp30_counter) {
-      sgp30_counter = 0;
+  if (!sgp.IAQmeasure() || !sgp30_type) {
+    // retry to init every 100 seconds
+    if (21 == (uptime %100)) {
+      sgp30_Init();
+    }
+    return;  // Measurement failed
+  }
+  if (global_update) {
+    // abs hum in mg/m3
+    sgp30_abshum=sgp30_AbsoluteHumidity(global_temperature,global_humidity,TempUnit());
+    sgp.setHumidity(sgp30_abshum*1000);
+  }
+  sgp30_ready = 1;
 
-      if (global_update) {
-        // abs hum in mg/m3
-        sgp30_abshum=sgp30_AbsoluteHumidity(global_temperature,global_humidity,TempUnit());
-        sgp.setHumidity(sgp30_abshum*1000);
-      }
-      uint16_t TVOC_base;
-      uint16_t eCO2_base;
+  // these should normally be stored permanently and used for fast restart
+  if (!(uptime%SAVE_PERIOD)) {
+    // store settings every N seconds
+    uint16_t TVOC_base;
+    uint16_t eCO2_base;
 
-      if (!sgp.getIAQBaseline(&eCO2_base, &TVOC_base)) return;  // Failed to get baseline readings
+    if (!sgp.getIAQBaseline(&eCO2_base, &TVOC_base)) return;  // Failed to get baseline readings
 //      snprintf_P(log_data, sizeof(log_data), PSTR("SGP: Baseline values eCO2 0x%04X, TVOC 0x%04X"), eCO2_base, TVOC_base);
 //      AddLog(LOG_LEVEL_DEBUG);
-    }
-    sgp30_ready = 1;
+
   }
 }
 
