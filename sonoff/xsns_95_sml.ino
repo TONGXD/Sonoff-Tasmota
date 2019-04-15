@@ -1652,7 +1652,10 @@ void SML_CounterSaveState(void) {
  * Interface
 \*********************************************************************************************/
 
+
+// bei neuer Tasmota Version muss hier bool stehen statt boolean
 boolean Xsns95(byte function) {
+//bool Xsns95(byte function) {
   boolean result = false;
     switch (function) {
       case FUNC_INIT:
@@ -1674,9 +1677,15 @@ boolean Xsns95(byte function) {
         SML_Show(1);
         break;
 #ifdef USE_WEBSERVER
+#if VERSION < 0x06050008
       case FUNC_WEB_APPEND:
         SML_Show(0);
         break;
+#else
+      case FUNC_WEB_SENSOR:
+        SML_Show(0);
+        break;
+#endif
 #endif  // USE_WEBSERVER
       case FUNC_COMMAND:
         if (XSNS_95 == XdrvMailbox.index) {
