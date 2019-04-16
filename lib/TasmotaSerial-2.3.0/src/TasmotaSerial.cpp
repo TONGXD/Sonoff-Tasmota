@@ -149,9 +149,8 @@ bool TasmotaSerial::begin(long speed, int stop_bits) {
   } else {
     // Use getCycleCount() loop to get as exact timing as possible
     m_bit_time = F_CPU /speed;
-    m_high_speed = (speed > 9600);
+    m_high_speed = (speed >= 9600);
   }
-  m_high_speed=1;
   return m_valid;
 }
 

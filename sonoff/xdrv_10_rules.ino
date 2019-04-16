@@ -704,8 +704,8 @@ double map_double(double x, double in_min, double in_max, double out_min, double
 #ifdef USE_RULES_GUI
 
 #define WEB_HANDLE_RULES "s10"
-#define D_CONFIGURE_RULES "Configure rule vars"
-#define D_RULEVARS "setup rule vars"
+#define D_CONFIGURE_RULES "Configure rules"
+#define D_RULEVARS "setup rules and rule vars"
 
 const char S_CONFIGURE_RULES[] PROGMEM = D_CONFIGURE_RULES;
 
@@ -715,11 +715,15 @@ const char HTTP_BTN_MENU_RULES[] PROGMEM =
 const char HTTP_FORM_RULES[] PROGMEM =
     "<fieldset><legend><b>&nbsp;" D_RULEVARS "&nbsp;</b></legend>"
     "<form method='post' action='" WEB_HANDLE_RULES "'>"
+    "<br><textarea  id='p6' name='p6' rows='8' cols='80' maxlength='500' style='font-size: 12pt' >xyz1xyz</textarea>"
+    "<br><textarea  id='p7' name='p7' rows='8' cols='80' maxlength='500' style='font-size: 12pt' >xyz2xyz</textarea>"
+    "<br><textarea  id='p8' name='p8' rows='8' cols='80' maxlength='500' style='font-size: 12pt' >xyz3xyz</textarea>"
     "<br/><b>" "mem1" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p1' name='p1' placeholder='0' value='{1'><br/>"
     "<br/><b>" "mem2" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p2' name='p2' placeholder='0' value='{2'><br/>"
     "<br/><b>" "mem3" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p3' name='p3' placeholder='0' value='{3'><br/>"
     "<br/><b>" "mem4" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p4' name='p4' placeholder='0' value='{4'><br/>"
-    "<br/><b>" "mem5" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p5' name='p5' placeholder='0' value='{5'><br/>";
+    "<br/><b>" "mem5" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p5' name='p5' placeholder='0' value='{5'><br/>"
+    "<script> function getrulestext() { var x = document.getElementById('p6').value;} </script>";
 
 void HandleRulesAction(void)
 {
@@ -744,6 +748,10 @@ void HandleRulesAction(void)
     page.replace("{4", String(Settings.mems[3]));
     page.replace("{5", String(Settings.mems[4]));
 
+    page.replace("xyz1xyz", String(Settings.rules[0]));
+    page.replace("xyz2xyz", String(Settings.rules[1]));
+    page.replace("xyz3xyz", String(Settings.rules[2]));
+
     page += FPSTR(HTTP_FORM_END);
     page += FPSTR(HTTP_BTN_CONF);
     ShowPage(page);
@@ -762,6 +770,9 @@ void RuleSaveSettings(void)
       strlcpy(Settings.mems[index],tmp, sizeof(Settings.mems[index]));
     }
   }
+  char pind[3]={'p','6',0};
+
+  //WebGetArg(pind, Settings.rules[0], sizeof(Settings.rules[0]));
 
 }
 
