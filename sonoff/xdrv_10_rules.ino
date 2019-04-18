@@ -770,6 +770,8 @@ void HandleRulesAction(void)
       page.replace(stemp, String(Settings.mems[i]));
     }
 
+    page.replace("endon ","endon\r");
+
     ShowPage(page);
   }
 
@@ -797,7 +799,9 @@ void RuleSaveSettings(void)
     snprintf_P(stemp, sizeof(stemp), "m%d",i+1);
     WebGetArg(stemp, tmp, sizeof(tmp));
     if (tmp && *tmp) {
-      strlcpy(Settings.mems[i],tmp, sizeof(Settings.mems[i]));
+      String str=tmp;
+      str.replace("endon\r","endon ");
+      strlcpy(Settings.mems[i],str.c_str(), sizeof(Settings.mems[i]));
     }
   }
 
