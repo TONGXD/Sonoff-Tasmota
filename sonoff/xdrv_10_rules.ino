@@ -711,19 +711,20 @@ const char HTTP_BTN_MENU_RULES[] PROGMEM =
 
 const char HTTP_FORM_RULES[] PROGMEM =
     "<fieldset><legend><b>&nbsp;" D_RULEVARS "&nbsp;</b></legend>"
-    "<form method='post' action='" WEB_HANDLE_RULES "'>"
-    "<br/><input style='width:10%;' id='b1' name='b1' type='checkbox'{r1><b>rule 1 enable</b><br/>"
-    "<br><textarea  id='p6' name='p6' rows='8' cols='80' maxlength='500' style='font-size: 12pt' >xyz1xyz</textarea>"
-    "<br/><input style='width:10%;' id='b2' name='b1' type='checkbox'{r2><b>rule 2 enable</b><br/>"
-    "<br><textarea  id='p7' name='p7' rows='8' cols='80' maxlength='500' style='font-size: 12pt' >xyz2xyz</textarea>"
-    "<br/><input style='width:10%;' id='b3' name='b1' type='checkbox'{r3><b>rule 3 enable</b><br/>"
-    "<br><textarea  id='p8' name='p8' rows='8' cols='80' maxlength='500' style='font-size: 12pt' >xyz3xyz</textarea>"
-    "<br/><b>" "mem1" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p1' name='p1' placeholder='0' value='{1'><br/>"
-    "<br/><b>" "mem2" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p2' name='p2' placeholder='0' value='{2'><br/>"
-    "<br/><b>" "mem3" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p3' name='p3' placeholder='0' value='{3'><br/>"
-    "<br/><b>" "mem4" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p4' name='p4' placeholder='0' value='{4'><br/>"
-    "<br/><b>" "mem5" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='p5' name='p5' placeholder='0' value='{5'><br/>"
-    "<script> function getrulestext() { var x = document.getElementById('p6').value;} </script>";
+    "<form method='post' action='" WEB_HANDLE_RULES "'>";
+
+const char HTTP_FORM_RULES1[] PROGMEM =
+    "<br/><input style='width:10%%;' id='c%d' name='c%d' type='checkbox'{r%d><b>rule %d enable</b><br/>"
+    "<br><textarea  id='t%1d' name='t%d' rows='8' cols='80' maxlength='%d' style='font-size: 12pt' >xyz%dxyz</textarea>";
+
+const char HTTP_FORM_RULES2[] PROGMEM =
+    "<br/><b>" "mem%d" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='m%d' name='m%d' placeholder='0' value='{%d'><br/>";
+
+const char HTTP_FORM_RULES3[] PROGMEM =
+    "<script> function GetRules() {"
+    "var rule1 = document.getElementById('p2');"
+    "var rule2 = document.getElementById('p4');"
+    "var rule3 = document.getElementById('p6');} </script>";
 
 void HandleRulesAction(void)
 {
@@ -741,60 +742,66 @@ void HandleRulesAction(void)
     page.replace(F("{v}"), FPSTR(D_CONFIGURE_RULES));
     page += FPSTR(HTTP_HEAD_STYLE);
     page += FPSTR(HTTP_FORM_RULES);
-
-    page.replace("{1", String(Settings.mems[0]));
-    page.replace("{2", String(Settings.mems[1]));
-    page.replace("{3", String(Settings.mems[2]));
-    page.replace("{4", String(Settings.mems[3]));
-    page.replace("{5", String(Settings.mems[4]));
-
-    page.replace(F("xyz1xyz"), String(Settings.rules[0]));
-    page.replace(F("xyz2xyz"), String(Settings.rules[1]));
-    page.replace(F("xyz3xyz"), String(Settings.rules[2]));
-
-    page.replace("{r1", bitRead(Settings.rule_enabled,0) ? F(" checked") : F(""));
-    page.replace("{r2", bitRead(Settings.rule_enabled,1) ? F(" checked") : F(""));
-    page.replace("{r3", bitRead(Settings.rule_enabled,2) ? F(" checked") : F(""));
-
+    for (uint8_t i=0;i<MAX_RULE_SETS;i++) {
+      char stemp[256];
+      snprintf_P(stemp, sizeof(stemp), HTTP_FORM_RULES1,i+1,i+1,i+1,i+1,i+1,i+1,MAX_RULE_SIZE,i+1);
+      page +=stemp;
+    }
+    for (uint8_t i=0;i<MAX_RULE_MEMS;i++) {
+      char stemp[128];
+      snprintf_P(stemp, sizeof(stemp), HTTP_FORM_RULES2,i+1,i+1,i+1,i+1);
+      page +=stemp;
+    }
     page += FPSTR(HTTP_FORM_END);
     page += FPSTR(HTTP_BTN_CONF);
+    //page += FPSTR(HTTP_FORM_RULES3);
+
+    //page.replace("type='submit'", "type='submit' onclick='GetRules()'");
+
+    for (uint8_t i=0;i<MAX_RULE_SETS;i++) {
+      char stemp[32];
+      snprintf_P(stemp, sizeof(stemp), "xyz%dxyz",i+1);
+      page.replace(stemp, String(Settings.rules[i]));
+      snprintf_P(stemp, sizeof(stemp), "{r%d",i+1);
+      page.replace(stemp, bitRead(Settings.rule_enabled,i) ? F(" checked") : F(""));
+    }
+
+    for (uint8_t i=0;i<MAX_RULE_MEMS;i++) {
+      char stemp[16];
+      snprintf_P(stemp, sizeof(stemp), "{%d",i+1);
+      page.replace(stemp, String(Settings.mems[i]));
+    }
+
     ShowPage(page);
   }
 
 
 void RuleSaveSettings(void)
 {
-  char tmp[100];
-  uint8_t index;
-  for (index=0; index<MAX_RULE_MEMS; index++) {
-    char pind[3]={'p','1',0};
-    pind[1]=0x30+index+1;
-    WebGetArg(pind, tmp, sizeof(tmp));
+  char tmp[MAX_RULE_SIZE+2];
+  for (uint8_t i=0;i<MAX_RULE_SETS;i++) {
+    char stemp[32];
+    snprintf_P(stemp, sizeof(stemp), "c%d",i+1);
+    if (WebServer->hasArg(stemp)) {
+      bitWrite(Settings.rule_enabled,i,1);
+    } else {
+      bitWrite(Settings.rule_enabled,i,0);
+    }
+    snprintf_P(stemp, sizeof(stemp), "t%d",i+1);
+    WebGetArg(stemp, tmp, sizeof(tmp));
     if (tmp && *tmp) {
-      strlcpy(Settings.mems[index],tmp, sizeof(Settings.mems[index]));
+      strlcpy(Settings.rules[i],tmp, sizeof(Settings.rules[i]));
     }
   }
-  if (WebServer->hasArg("b1")) {
-    bitWrite(Settings.rule_enabled,0,1);
-  } else {
-    bitWrite(Settings.rule_enabled,0,0);
+
+  for (uint8_t i=0; i<MAX_RULE_MEMS; i++) {
+    char stemp[16];
+    snprintf_P(stemp, sizeof(stemp), "m%d",i+1);
+    WebGetArg(stemp, tmp, sizeof(tmp));
+    if (tmp && *tmp) {
+      strlcpy(Settings.mems[i],tmp, sizeof(Settings.mems[i]));
+    }
   }
-  if (WebServer->hasArg("b2")) {
-    bitWrite(Settings.rule_enabled,1,1);
-  } else {
-    bitWrite(Settings.rule_enabled,1,0);
-  }
-  if (WebServer->hasArg("b3")) {
-    bitWrite(Settings.rule_enabled,2,1);
-  } else {
-    bitWrite(Settings.rule_enabled,2,0);
-  }
-
-
-
-  char pind[3]={'p','6',0};
-
-  //WebGetArg(pind, Settings.rules[0], sizeof(Settings.rules[0]));
 
 }
 
