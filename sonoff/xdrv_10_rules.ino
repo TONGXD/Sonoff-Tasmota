@@ -718,19 +718,20 @@ const char HTTP_FORM_RULES1[] PROGMEM =
     "<br><textarea  id='t%1d' name='t%d' rows='8' cols='80' maxlength='%d' style='font-size: 12pt' >xyz%dxyz</textarea>";
 
 const char HTTP_FORM_RULES2[] PROGMEM =
-    "<br/><b>" "mem%d" "</b> (" "unit" ")<br/><input type='number' step='0.001' id='m%d' name='m%d' placeholder='0' value='{%d'><br/>";
+    "<br/><b>" "%s" "</b> (" "%s" ")<br/><input type='number' step='0.1' id='m%d' name='m%d' placeholder='0' value='{%d'><br/>";
 
-const char HTTP_FORM_RULES3[] PROGMEM =
-    "<script> function GetRules() {"
-    "var rule1 = document.getElementById('p2');"
-    "var rule2 = document.getElementById('p4');"
-    "var rule3 = document.getElementById('p6');} </script>";
+
 
 void HandleRulesAction(void)
 {
     if (!HttpCheckPriviledgedAccess()) { return; }
 
     AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_CONFIGURE_RULES);
+
+    // must edit and or expand mem names here
+    // later may have also type def for mems here
+    const char mem_names[][8] = {"in_tmp","C","out_tmp","C","mem3","unit","mem4","unit","mem5","unit"};
+
 
     if (WebServer->hasArg("save")) {
       RuleSaveSettings();
@@ -749,14 +750,11 @@ void HandleRulesAction(void)
     }
     for (uint8_t i=0;i<MAX_RULE_MEMS;i++) {
       char stemp[128];
-      snprintf_P(stemp, sizeof(stemp), HTTP_FORM_RULES2,i+1,i+1,i+1,i+1);
+      snprintf_P(stemp, sizeof(stemp), HTTP_FORM_RULES2,mem_names[i*2],mem_names[i*2+1],i+1,i+1,i+1,i+1);
       page +=stemp;
     }
     page += FPSTR(HTTP_FORM_END);
     page += FPSTR(HTTP_BTN_CONF);
-    //page += FPSTR(HTTP_FORM_RULES3);
-
-    //page.replace("type='submit'", "type='submit' onclick='GetRules()'");
 
     for (uint8_t i=0;i<MAX_RULE_SETS;i++) {
       char stemp[32];
