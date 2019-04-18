@@ -11,18 +11,23 @@ apply to smart meter ir diode
 
 e.g. Phototransistor TEKT5400S works very well.
 
-uses RX pin of serial port
+uses RX pin of serial port or any other gpio
 
 please note that the normal serial port is used
 
 now supports reading of more then one meter via special software serial
 (no wait irq driven)
 
+also supports gas and water meters via special counter modes
+this enables to read all meter types together with one device
+
 Also added an STL file for printing a housing for the Phototransistor
 (TEKT5400)
 
 you may set sleep to at least 50 to reduce total power consumptions to
 about 0,3 Watts
+
+further documentation inside of source code 
 
 EBUS (Wolf) \#define USE\_EBUS
 
@@ -149,13 +154,11 @@ example:
 sendmail [smtp.gmail.com:465:user:passwd:<misterx@gmail.com>:<missesx@gmail.com>:TASMOTA mail] Hallo TASMOTA
 
 
-GAS counter mode
-=====================================
-this is a modified counter handling for counter1 with debouncing of both on and off transitions
-#define GAS_COUNTER_MODE 5000
-5000 specifies the delay in microseconds in the debounce off state (set as low as possible)
-#define GAS_POLL_MODE
-enables an non IRQ counter mode with sampling every 100ms and debouncing of 400 ms
+rules edit windows, + mem vars entry
+======================================
+#define USE_RULES_GUI
+allow editing of rules + mem in extra menu (submenu of setup => configure rules)
+seperating each on endon into lines
 
 
 THINGSPEAK POST mode with WebSend
