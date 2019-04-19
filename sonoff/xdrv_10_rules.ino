@@ -728,10 +728,19 @@ void HandleRulesAction(void)
 
     AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_CONFIGURE_RULES);
 
-    // must edit and or expand mem names here
+    // must edit and or expand custom mem names here
     // later may have also type def for mems here
-    const char mem_names[][8] = {"in_tmp","C","out_tmp","C","mem3","unit","mem4","unit","mem5","unit"};
-
+    const struct MEM_NAMES {
+      char name[10];
+      char unit[6];
+    } mem_names[6]= {
+      [0]={"in_tmp","C"},
+      [1]={"out_tmp","C"},
+      [2]={"mem3","C"},
+      [3]={"mem4","C"},
+      [4]={"mem5","C"},
+      [5]={"",""},
+    };
 
     if (WebServer->hasArg("save")) {
       RuleSaveSettings();
@@ -750,7 +759,8 @@ void HandleRulesAction(void)
     }
     for (uint8_t i=0;i<MAX_RULE_MEMS;i++) {
       char stemp[128];
-      snprintf_P(stemp, sizeof(stemp), HTTP_FORM_RULES2,mem_names[i*2],mem_names[i*2+1],i+1,i+1,i+1,i+1);
+      if (!mem_names[i].name) break;
+      snprintf_P(stemp, sizeof(stemp), HTTP_FORM_RULES2,mem_names[i].name,mem_names[i].unit,i+1,i+1,i+1,i+1);
       page +=stemp;
     }
     page += FPSTR(HTTP_FORM_END);
