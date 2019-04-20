@@ -162,7 +162,7 @@ struct METER_DESC {
 #define WGS_COMBO 13
 
 // diesen Zähler auswählen
-#define METER WGS_COMBO
+#define METER EHZ363
 
 //=====================================================
 // Einträge in Liste
