@@ -1,5 +1,5 @@
 /*
-  xdrv_10_scripter.ino - rule support for Sonoff-Tasmota
+  xdrv_10_scripter.ino - script support for Sonoff-Tasmota
 
   Copyright (C) 2019  Gerhard Mutz and Theo Arends
 
@@ -18,16 +18,17 @@
 */
 
 
-/* example program
+/* example program, p: means permanent
 >DEF
 hello="hello world"
 string="xxx"
-p:perm=33
-p:nperm=22
+p:mintmp=10
+p:maxtmp=30
 hum=0
 temp=0
 timer=0
 dimmer=0
+sw=0
 
 >BOOT
 =>print BOOT executed
@@ -35,8 +36,8 @@ dimmer=0
 >TELE
 hum=BME280#Humidity
 temp=BME280#Temperature
-temp=Switch1
-=> power1 %temp%
+sw=Switch1
+=> power1 %sw%
 
 if temp>30
 and hum>70
@@ -59,6 +60,14 @@ then dimmer=0
 endif
 dimmer %dimmer%
 
+special vars:
+
+upsecs = seconds since start
+uptime = minutes since start
+time = minutes since midnight
+sunrise = sunrise minutes since midnight
+sunset = sunset minutes since midnight
+tstamp = timestamp (local date and time)
 */
 
 
@@ -406,7 +415,7 @@ char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp,char *js) {
                 if ((*vtype&STYPE)==0) {
                     if (fp) *fp=glob_script_mem.fvars[index];
                 } else {
-                    if (sp) strcpy(sp,glob_script_mem.glob_snp+glob_script_mem.snp_offset[index]);;
+                    if (sp) strcpy(sp,glob_script_mem.glob_snp+glob_script_mem.snp_offset[index]);
                 }
                 return lp+len;
             }
@@ -419,6 +428,7 @@ char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp,char *js) {
       //DynamicJsonBuffer<1024> jsonBuffer; //heap
       char jsbuff[strlen(js)+1];
       strcpy(jsbuff,js);
+
       JsonObject &root = jsonBuffer.parseObject(jsbuff);
 
 //{"Time":"2019-04-20T19:00:40","BME280":{"Temperature":23.0,"Humidity":32.3,"Pressure":1014.0},"SGP30":{"eCO2":584,"TVOC":263,"aHumidity":6.5717},"PressureUnit":"hPa","TempUnit":"C"}
@@ -427,12 +437,9 @@ char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp,char *js) {
         if (subtype) {
           *subtype=0;
           subtype++;
-          //toLog(vname);
-          //toLog(subtype);
           String vn=vname;
           String st=subtype;
           const char* str_value = root[vn][st];
-          //toLog(str_value);
           if (root[vn][st].success()) {
             // return variable value
             *vtype=NTYPE;
@@ -440,10 +447,8 @@ char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp,char *js) {
             return lp+len;
           }
         } else {
-          //toLog(vname);
           String vn=vname;
           const char* str_value = root[vn];
-          //toLog(str_value);
           if (root[vn].success()) {
             // return variable value
             if (*fp) {
@@ -461,14 +466,53 @@ char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp,char *js) {
         }
       }
     }
+
+    float fvar;
+
+    // check for special vars
+    if (!strncmp(vname,"uptime",6)) {
+      fvar=GetMinutesUptime();
+      goto exit;
+    }
+    if (!strncmp(vname,"upsecs",6)) {
+      fvar=uptime;
+      goto exit;
+    }
+    if (!strncmp(vname,"time",4)) {
+      fvar=GetMinutesPastMidnight();
+      goto exit;
+    }
+    if (!strncmp(vname,"time",4)) {
+      fvar=GetMinutesPastMidnight();
+      goto exit;
+    }
+
+#if defined(USE_TIMERS) && defined(USE_SUNRISE)
+    if (!strncmp(vname,"sunrise",7)) {
+      fvar=GetSunMinutes(0);
+      goto exit;
+    }
+    if (!strncmp(vname,"sunset",6)) {
+      fvar=GetSunMinutes(1);
+      goto exit;
+    }
+#endif
+
+    if (!strncmp(vname,"tstamp",6)) {
+      if (sp) strcpy(sp,GetDateAndTime(DT_LOCAL).c_str());
+      *vtype=STYPE;
+      return lp+len;
+    }
+
     // check for immediate value
     //if (fp) sscanf(vname,"%f",fp);
-    float fvar=CharToDouble(vname);
+    fvar=CharToDouble(vname);
     if (isnan(fvar)) {
       if (fp) *fp=0;
       *vtype=0xff;
       return lp;
     }
+exit:
     if (fp) *fp=fvar;
     *vtype=0xfe;
     return lp+len;
@@ -611,14 +655,14 @@ void Replace_Cmd_Vars(char *srcbuf,char *dstbuf,uint16_t dstsize) {
     uint8_t vtype;
     float fvar;
     cp=srcbuf;
-    char string[16];
+    char string[32];
     for (count=0;count<dstsize;count++) {
         if (*cp=='%') {
             cp++;
             cp=isvar(cp,&vtype,&fvar,string,0);
             if (vtype!=0xff) {
                 // found variable as result
-                if ((vtype&STYPE)==0) {
+                if (vtype==0xfe || (vtype&STYPE)==0) {
                     // numeric result
                     //sprintf(string,SCRIPT_FLOAT_PRECISION,fvar);
                     dtostrfd(fvar,SCRIPT_FLOAT_PRECISION,string);
