@@ -162,6 +162,7 @@ seperating each on endon into lines
 
 
 script editor as an alternative to rules (must disable rules by editing #ifdef on start of rules source) (work in progress)
+(uses about 6.5k flash)
 =====================================
 editor is a submenu of setup (script editor)
 supports if,then,else,or,and, expressions and up to 40 variables with free names

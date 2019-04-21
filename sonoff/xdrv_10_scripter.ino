@@ -180,7 +180,7 @@ void RuleSaveSettings(void)
   }
 
   if (glob_script_mem.script_mem) free(glob_script_mem.script_mem);
-  if (bitRead(Settings.rule_enabled, 0) {
+  if (bitRead(Settings.rule_enabled, 0)) {
     Init_Scripter(Settings.rules[0]);
     Run_Scripter(Settings.rules[0],SECTION_BOOT, 0);
   }
