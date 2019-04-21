@@ -60,6 +60,11 @@ then dimmer=0
 endif
 dimmer %dimmer%
 
+if (upsecs%5)==0
+then
+=>print %upsecs%  (every 5 seconds)
+endif
+
 special vars:
 
 upsecs = seconds since start
@@ -606,6 +611,7 @@ char *getop(char *lp, uint8_t *operand) {
 char *GetNumericResult(char *lp,uint8_t lastop,float *fp,char *js) {
 uint8_t operand=0;
 float fvar1,fvar;
+char *slp;
 uint8_t vtype;
     while (1) {
         // get 1. value
@@ -638,7 +644,22 @@ uint8_t vtype;
             default:
                 break;
         }
+        slp=lp;
         lp=getop(lp,&operand);
+        switch (operand) {
+            case OPER_EQUEQU:
+            case OPER_NOTEQU:
+            case OPER_LOW:
+            case OPER_LOWEQU:
+            case OPER_GRT:
+            case OPER_GRTEQU:
+                lp=slp;
+                *fp=fvar;
+                return lp;
+                break;
+            default:
+                break;
+        }
         lastop=operand;
         if (!operand) {
             *fp=fvar;
@@ -777,17 +798,21 @@ int16_t Run_Scripter(char *script,uint8_t type, char *js) {
             }
 
             // check for variable result
-            lp=isvar(lp,&vtype,0,0,0);
-            if (vtype!=0xff) {
-                // found variable as result
-                if ((vtype&STYPE)==0) {
-                    // numeric result
-                    dfvar=&glob_script_mem.fvars[vtype&INDMASK];
-                    numeric=1;
-                } else {
-                    // string result, not yet
-                    numeric=0;
-                }
+            if (if_state==1) {
+              lp=GetNumericResult(lp,OPER_EQU,dfvar,0);
+            } else {
+              lp=isvar(lp,&vtype,0,0,0);
+              if (vtype!=0xff) {
+                  // found variable as result
+                  if ((vtype&STYPE)==0) {
+                      // numeric result
+                      dfvar=&glob_script_mem.fvars[vtype&INDMASK];
+                      numeric=1;
+                    } else {
+                      // string result, not yet
+                      numeric=0;
+                    }
+                  }
             }
             // evaluate operand
             lp=getop(lp,&lastop);
