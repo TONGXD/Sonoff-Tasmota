@@ -27,7 +27,7 @@ Also added an STL file for printing a housing for the Phototransistor
 you may set sleep to at least 50 to reduce total power consumptions to
 about 0,3 Watts
 
-further documentation inside of source code 
+further documentation inside of source code
 
 EBUS (Wolf) \#define USE\_EBUS
 
@@ -159,6 +159,40 @@ rules edit windows, + mem vars entry
 #define USE_RULES_GUI
 allow editing of rules + mem in extra menu (submenu of setup => configure rules)
 seperating each on endon into lines
+
+
+script editor as an alternative to rules (must disable rules by editing #ifdef on start of rules source) (work in progress)
+=====================================
+editor is a submenu of setup (script editor)
+supports if,then,else,or,and, expressions and up to 40 variables with free names
+4 sections:
+DEF to define and preset variables e.g.
+timer=0
+humidity=0
+temp=0
+hello="Hello world"
+
+BOOT executed on boot time
+=>print Boot executed (print =>spec cmd logs to console)
+
+TELE executed an teleperiod time e.g.
+humidity=BME280#Humidity
+temp=BME280#Temperature
+
+TIME executed every second
+timer+=1
+if timer>60
+then timer=0
+=> power1 on  (=> executes cmds)
+endif
+
+dimmer+=1
+if dimmer>100
+then dimmer=0
+endif
+=> dimmer %dimmer%
+
+
 
 
 THINGSPEAK POST mode with WebSend

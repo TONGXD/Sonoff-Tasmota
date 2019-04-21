@@ -2088,7 +2088,7 @@ exit:
 #endif
 
 
-#define WEBSEND_THINGSPEAK
+//#define WEBSEND_THINGSPEAK
 
 
 int WebSend(char *buffer)
@@ -2143,7 +2143,7 @@ int WebSend(char *buffer)
     String uri = UrlEncode(nuri);
     uri += command;
 #else
-    uri += command;
+    nuri += command;
     String uri = UrlEncode(nuri);
 #endif
 
