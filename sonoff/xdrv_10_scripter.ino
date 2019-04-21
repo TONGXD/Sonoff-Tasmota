@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef xUSE_RULES
+#ifdef USE_RULES
 /*********************************************************************************************\
  * Rules based heavily on ESP Easy implementation
  *
@@ -64,6 +64,24 @@
 \*********************************************************************************************/
 
 #define XDRV_10             10
+
+
+// global memory
+struct SCRIPT_MEM {
+    float *fvars; // number var pointer
+    char *glob_vnp; // var name pointer
+    uint8_t *vnp_offset;
+    char *glob_snp; // string vars pointer
+    uint8_t *snp_offset;
+    uint8_t *type; // type and index pointer
+    uint16_t numvars;
+    void *script_mem;
+    uint16_t script_mem_size;
+    uint16_t section;
+} glob_script_mem;
+enum {SECTION_BOOT=1,SECTION_TELE,SECTION_TIME};
+
+
 
 #define D_CMND_RULE "Rule"
 #define D_CMND_RULETIMER "RuleTimer"
@@ -548,9 +566,10 @@ void RulesSetPower(void)
 
 void RulesTeleperiod(void)
 {
-  rules_teleperiod = 1;
-  RulesProcess();
-  rules_teleperiod = 0;
+  //rules_teleperiod = 1;
+  //RulesProcess();
+  //rules_teleperiod = 0;
+  Run_Scripter(Settings.rules[0],SECTION_TELE, mqtt_data);
 }
 
 boolean RulesCommand(void)
@@ -789,18 +808,7 @@ void HandleRulesAction(void)
     ShowPage(page);
   }
 
-  // global memory
-  struct SCRIPT_MEM {
-      float *fvars; // number var pointer
-      char *glob_vnp; // var name pointer
-      uint8_t *vnp_offset;
-      char *glob_snp; // string vars pointer
-      uint8_t *snp_offset;
-      uint8_t *type; // type and index pointer
-      uint16_t numvars;
-      void *script_mem;
-      uint16_t script_mem_size;
-  } glob_script_mem;
+
 
 void RuleSaveSettings(void)
 {
@@ -835,7 +843,7 @@ void RuleSaveSettings(void)
 
   if (glob_script_mem.script_mem) free(glob_script_mem.script_mem);
   Init_Scripter(Settings.rules[0]);
-  Run_Scripter(Settings.rules[0],">BOOT", 0);
+  Run_Scripter(Settings.rules[0],SECTION_BOOT, 0);
 }
 
 #endif
@@ -855,6 +863,8 @@ void RuleSaveSettings(void)
 #define MAXSVARS 10
 
 #define SCRIPT_EOL '\n'
+
+
 
 //#define SCRIPT_FLOAT_PRECISION "%.2f"
 #define SCRIPT_FLOAT_PRECISION 2
@@ -955,9 +965,14 @@ int16_t Init_Scripter(char *script) {
         lp++;
     }
     // now copy vars to memory
-    uint16_t script_mem_size=(vnames_p-vnames)+(sizeof(char*)*vars)+
-    (strings_p-strings)+(sizeof(char*)*svars)+
-    (sizeof(float)*nvars)+
+    uint16_t script_mem_size=(sizeof(float)*nvars)+
+    (vnames_p-vnames)+
+    (strings_p-strings)+
+    // vars offsets
+    (sizeof(uint8_t)*vars)+
+    // string offsets
+    (sizeof(uint8_t)*svars)+
+    // type array
     (sizeof(uint8_t)*vars);
 
     script_mem_size+=4;
@@ -1032,7 +1047,7 @@ int16_t Init_Scripter(char *script) {
 }
 
 
-char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp) {
+char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp,char *js) {
     uint16_t count,len=0;
     char vname[16];
     for (count=0; count<sizeof(vname); count++) {
@@ -1062,6 +1077,41 @@ char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp) {
             }
         }
     }
+
+    if (js) {
+      // look for json input
+      StaticJsonBuffer<1024> jsonBuffer; //stack
+      //DynamicJsonBuffer<1024> jsonBuffer; //heap
+
+//{"Time":"2019-04-20T19:00:40","BME280":{"Temperature":23.0,"Humidity":32.3,"Pressure":1014.0},"SGP30":{"eCO2":584,"TVOC":263,"aHumidity":6.5717},"PressureUnit":"hPa","TempUnit":"C"}
+
+      JsonObject &root = jsonBuffer.parseObject(js);
+      if (root.success()) {
+        char *subtype=strchr(vname,'#');
+        if (subtype) {
+          *subtype=0;
+          subtype++;
+          String vn=vname;
+          String st=subtype;
+          const char* str_value = root[vn][st];
+          if (root[vn][st].success()) {
+            // return variable value
+            *vtype=NTYPE;
+            if (fp) *fp=CharToDouble((char*)str_value);
+            return lp+len;
+          }
+        } else {
+          String vn=vname;
+          const char* str_value = root[vn];
+          if (root[vn].success()) {
+            // return variable value
+            *vtype=NTYPE;
+            if (fp) *fp=CharToDouble((char*)str_value);
+            return lp+len;
+          }
+        }
+      }
+    }
     // check for immediate value
     //if (fp) sscanf(vname,"%f",fp);
     if (fp) *fp=CharToDouble(vname);
@@ -1076,9 +1126,6 @@ char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp) {
 
 
 enum {OPER_EQU=1,OPER_PLS,OPER_MIN,OPER_MUL,OPER_DIV,OPER_PLSEQU,OPER_MINEQU,OPER_MULEQU,OPER_DIVEQU,OPER_EQUEQU,OPER_NOTEQU,OPER_GRTEQU,OPER_LOWEQU,OPER_GRT,OPER_LOW,OPER_PERC};
-
-
-
 
 char *getop(char *lp, uint8_t *operand) {
     switch (*lp) {
@@ -1162,7 +1209,7 @@ char *getop(char *lp, uint8_t *operand) {
 }
 
 
-char *GetNumericResult(char *lp,uint8_t lastop,float *fp) {
+char *GetNumericResult(char *lp,uint8_t lastop,float *fp,char *js) {
 uint8_t operand=0;
 float fvar1,fvar;
 uint8_t vtype;
@@ -1170,10 +1217,10 @@ uint8_t vtype;
         // get 1. value
         if (*lp=='(') {
             lp++;
-            lp=GetNumericResult(lp,OPER_EQU,&fvar1);
+            lp=GetNumericResult(lp,OPER_EQU,&fvar1,js);
             lp++;
         } else {
-            lp=isvar(lp,&vtype,&fvar1,0);
+            lp=isvar(lp,&vtype,&fvar1,0,js);
         }
         switch (lastop) {
             case OPER_EQU:
@@ -1218,7 +1265,7 @@ void Replace_Cmd_Vars(char *srcbuf,char *dstbuf,uint16_t dstsize) {
     for (count=0;count<dstsize;count++) {
         if (*cp=='%') {
             cp++;
-            cp=isvar(cp,&vtype,&fvar,string);
+            cp=isvar(cp,&vtype,&fvar,string,0);
             if (vtype!=0xff) {
                 // found variable as result
                 if ((vtype&STYPE)==0) {
@@ -1244,13 +1291,18 @@ void Replace_Cmd_Vars(char *srcbuf,char *dstbuf,uint16_t dstsize) {
 
 
 // execute section of scripter
-int16_t Run_Scripter(char *script,const char *type, char *mqtt) {
+int16_t Run_Scripter(char *script,uint8_t type, char *js) {
     char *lp=script;
-    uint8_t section=0;
     uint8_t vtype=0;
     uint8_t operand,lastop,numeric,if_state=0,if_result,and_or;
     float *dfvar;
     float fvar=0,fvar1;
+    glob_script_mem.section=0;
+
+    if (!glob_script_mem.script_mem_size) {
+      Init_Scripter(script);
+    }
+
     while (1) {
         // check line
         // skip leading spaces
@@ -1260,10 +1312,10 @@ int16_t Run_Scripter(char *script,const char *type, char *mqtt) {
         // skip comment
         if (*lp==';') goto next_line;
 
-        if (section) {
+        if (glob_script_mem.section) {
             // we are in section
             if (*lp=='>') {
-                section=0;
+                glob_script_mem.section=0;
                 break;
             }
             if (!strncmp(lp,"if",2)) {
@@ -1323,7 +1375,7 @@ int16_t Run_Scripter(char *script,const char *type, char *mqtt) {
             }
 
             // check for variable result
-            lp=isvar(lp,&vtype,0,0);
+            lp=isvar(lp,&vtype,0,0,0);
             if (vtype!=0xff) {
                 // found variable as result
                 if ((vtype&STYPE)==0) {
@@ -1339,7 +1391,7 @@ int16_t Run_Scripter(char *script,const char *type, char *mqtt) {
             lp=getop(lp,&lastop);
             if (if_state==1) {
                 uint8_t res=0xff;
-                lp=GetNumericResult(lp,OPER_EQU,&fvar1);
+                lp=GetNumericResult(lp,OPER_EQU,&fvar1,js);
                 switch (lastop) {
                     case OPER_EQUEQU:
                         res=*dfvar==fvar1;
@@ -1376,22 +1428,22 @@ int16_t Run_Scripter(char *script,const char *type, char *mqtt) {
             } else {
                 switch (lastop) {
                     case OPER_EQU:
-                        lp=GetNumericResult(lp,OPER_EQU,dfvar);
+                        lp=GetNumericResult(lp,OPER_EQU,dfvar,js);
                         break;
                     case OPER_PLSEQU:
-                        lp=GetNumericResult(lp,OPER_EQU,&fvar);
+                        lp=GetNumericResult(lp,OPER_EQU,&fvar,js);
                         *dfvar+=fvar;
                         break;
                     case OPER_MINEQU:
-                        lp=GetNumericResult(lp,OPER_EQU,&fvar);
+                        lp=GetNumericResult(lp,OPER_EQU,&fvar,js);
                         *dfvar-=fvar;
                         break;
                     case OPER_MULEQU:
-                        lp=GetNumericResult(lp,OPER_EQU,&fvar);
+                        lp=GetNumericResult(lp,OPER_EQU,&fvar,js);
                         *dfvar*=fvar;
                         break;
                     case OPER_DIVEQU:
-                        lp=GetNumericResult(lp,OPER_EQU,&fvar);
+                        lp=GetNumericResult(lp,OPER_EQU,&fvar,js);
                         *dfvar/=fvar;
                         break;
                     default:
@@ -1402,9 +1454,24 @@ int16_t Run_Scripter(char *script,const char *type, char *mqtt) {
 
         } else {
             // decode line
-            if (!strncmp(lp,type,strlen(type))) {
+            const char *cp;
+            switch (type) {
+              case SECTION_BOOT:
+                cp=">BOOT";
+                break;
+              case SECTION_TELE:
+                cp=">TELE";
+                break;
+              case SECTION_TIME:
+                cp=">TIME";
+                break;
+              default:
+                cp="";
+                break;
+            }
+            if (!strncmp(lp,(const char*)cp,strlen(cp))) {
                 // found section
-                section=1;
+                glob_script_mem.section=type;
             }
         }
         // next line

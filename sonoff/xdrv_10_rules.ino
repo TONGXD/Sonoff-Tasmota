@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef USE_RULES
+#ifdef xUSE_RULES
 /*********************************************************************************************\
  * Rules based heavily on ESP Easy implementation
  *
