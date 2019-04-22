@@ -905,32 +905,49 @@ uint8_t dchars[16];
 
 }
 
+// skip sml entries
+uint8_t *skip_sml(uint8_t *cp,int16_t *res) {
+    uint8_t len,len1,type;
+    len=*cp&0xf;
+    type=*cp&0x70;
+    if (type==0x70) {
+        // list, skip entries
+        // list
+        cp++;
+        while (len--) {
+            len1=*cp&0x0f;
+            cp+=len1;
+        }
+         *res=0;
+    } else {
+        // skip len
+        *res=(signed char)*(cp+1);
+        cp+=len;
+    }
+    return cp;
+}
 
 // get sml binary value
 // not defined for unsigned >0x7fff ffff ffff ffff (should never happen)
 int64_t sml_getvalue(unsigned char *cp,uint8_t index) {
-short len,unit,scaler,type;
+uint8_t len,unit,type;
+int16_t scaler,result;
 int64_t value;
 
-    // scan for value
-    // check status
-    len=*cp&0x0f;
-    cp+=len;
-    // check time
-    len=*cp&0x0f;
-    cp+=len;
-    // check unit
-    len=*cp&0x0f;
-    unit=*(cp+1);
-    cp+=len;
-    // check scaler
-    len=*cp&0x0f;
-    scaler=(signed char)*(cp+1);
-    cp+=len;
-    // get value
-    type=*cp&0x70;
-    len=*cp&0x0f;
-    cp++;
+  // scan for values
+  // check status
+  cp=skip_sml(cp,&result);
+  // check time
+  cp=skip_sml(cp,&result);
+  // check unit
+  cp=skip_sml(cp,&result);
+  // check scaler
+  cp=skip_sml(cp,&result);
+  scaler=result;
+  // get value
+  type=*cp&0x70;
+  len=*cp&0x0f;
+  cp++;
     if (type==0x50 || type==0x60) {
         // shift into 64 bit
         uint64_t uvalue=0;
