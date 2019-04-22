@@ -17,8 +17,24 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* uses about 7k of flash about the same as rules
+Sections:
+>DEF
+define and init all variables (max lenght of all var names together limited to 256 chars, so keep names as short as possible)
+>BOOT
+executed after reboot
+>TELE
+executed on tele MQTT, tele vars are only available in this section (e.g. BME280#Temperature)
+if you want tele vars in other sections copy them to local vars
+>TIME
+executed every second
+>EVENT
+executed on events, eg power change
 
-/* example program, p: means permanent
+
+ example program, p: means permanent
+ special cmd is =>print logs text to web console
+ comments start with ;
 >DEF
 hello="hello world"
 string="xxx"
@@ -37,11 +53,11 @@ sw=0
 hum=BME280#Humidity
 temp=BME280#Temperature
 sw=Switch1
-=> power1 %sw%
+=>power1 %sw%
 
 if temp>30
 and hum>70
-then print damn hot!
+then =>print damn hot!
 endif
 
 ; math => +,-,*,/,% left, right evaluation with optional brackets
@@ -58,7 +74,7 @@ dimmer+=1
 if dimmer>100
 then dimmer=0
 endif
-dimmer %dimmer%
+=>dimmer %dimmer%
 
 if (upsecs%5)==0
 then
@@ -73,6 +89,7 @@ time = minutes since midnight
 sunrise = sunrise minutes since midnight
 sunset = sunset minutes since midnight
 tstamp = timestamp (local date and time)
+powerx = power state
 */
 
 
@@ -94,7 +111,7 @@ struct SCRIPT_MEM {
     uint16_t script_mem_size;
     uint16_t section;
 } glob_script_mem;
-enum {SECTION_BOOT=1,SECTION_TELE,SECTION_TIME};
+enum {SECTION_BOOT=1,SECTION_TELE,SECTION_TIME,SECTION_EVENT};
 
 void ScriptEverySecond(void) {
   if (bitRead(Settings.rule_enabled, 0)) Run_Scripter(Settings.rules[0],SECTION_TIME,0);
@@ -169,8 +186,6 @@ void HandleRulesAction(void)
     ShowPage(page);
   }
 
-
-
 void RuleSaveSettings(void)
 {
   char tmp[MAX_RULE_SIZE*3+2];
@@ -193,7 +208,9 @@ void RuleSaveSettings(void)
     }
   }
 
-  if (glob_script_mem.script_mem) free(glob_script_mem.script_mem);
+  if (glob_script_mem.script_mem) {
+    free(glob_script_mem.script_mem);
+  }
   if (bitRead(Settings.rule_enabled, 0)) {
     Init_Scripter(Settings.rules[0]);
     Run_Scripter(Settings.rules[0],SECTION_BOOT, 0);
@@ -390,8 +407,26 @@ int16_t Init_Scripter(char *script) {
         snamep++;
         index++;
     }
-
     glob_script_mem.numvars=vars;
+
+    // now preset permanent vars
+    uint32_t lptr=(uint32_t)Settings.mems[0];
+    lptr&=0xfffffffc;
+    float *fp=(float*)lptr;
+    fp++;
+    for (uint8_t count=0; count<glob_script_mem.numvars; count++) {
+      uint8_t vtype=glob_script_mem.type[count];
+      if (vtype&PTYPE) {
+        uint8_t index=vtype&INDMASK;
+        if (!isnan(*fp)) {
+          glob_script_mem.fvars[index]=*fp;
+        } else {
+          *fp=glob_script_mem.fvars[index];
+        }
+        fp++;
+      }
+    }
+
     return error;
 }
 
@@ -507,6 +542,16 @@ char *isvar(char *lp, uint8_t *vtype,float *fp,char *sp,char *js) {
       if (sp) strcpy(sp,GetDateAndTime(DT_LOCAL).c_str());
       *vtype=STYPE;
       return lp+len;
+    }
+    // power state
+    if (!strncmp(vname,"power",5)) {
+      uint8_t index=atoi(lp+5);
+      if (index<=devices_present) {
+        fvar=bitRead(power,index-1);
+      } else {
+        fvar=-1;
+      }
+      goto exit;
     }
 
     // check for immediate value
@@ -891,6 +936,10 @@ int16_t Run_Scripter(char *script,uint8_t type, char *js) {
               case SECTION_TIME:
                 cp=">TIME";
                 break;
+              case SECTION_EVENT:
+                cp=">EVENT";
+                break;
+
               default:
                 cp="";
                 break;
@@ -908,7 +957,39 @@ int16_t Run_Scripter(char *script,uint8_t type, char *js) {
     }
 }
 
+uint8_t rules_xsns_index = 0;
 
+void ScripterEvery100ms(void)
+{
+  if (Settings.rule_enabled && (uptime > 4)) {  // Any rule enabled and allow 4 seconds start-up time for sensors (#3811)
+    mqtt_data[0] = '\0';
+    int tele_period_save = tele_period;
+    tele_period = 2;                                   // Do not allow HA updates during next function call
+    XsnsNextCall(FUNC_JSON_APPEND, rules_xsns_index);  // ,"INA219":{"Voltage":4.494,"Current":0.020,"Power":0.089}
+    tele_period = tele_period_save;
+    if (strlen(mqtt_data)) {
+      mqtt_data[0] = '{';                              // {"INA219":{"Voltage":4.494,"Current":0.020,"Power":0.089}
+      snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s}"), mqtt_data);
+      Run_Scripter(Settings.rules[0],SECTION_TELE, mqtt_data);
+    }
+  }
+}
+
+//mems[MAX_RULE_MEMS]
+void Scripter_save_pvars(void) {
+  uint32_t lptr=(uint32_t)Settings.mems[0];
+  lptr&=0xfffffffc;
+  float *fp=(float*)lptr;
+  fp++;
+  for (uint8_t count=0; count<glob_script_mem.numvars; count++) {
+    uint8_t vtype=glob_script_mem.type[count];
+    if (vtype&PTYPE) {
+      uint8_t index=vtype&INDMASK;
+      *fp++=glob_script_mem.fvars[index];
+    }
+  }
+
+}
 
 /*********************************************************************************************\
  * Interface
@@ -925,8 +1006,15 @@ boolean Xdrv10(byte function)
         Run_Scripter(Settings.rules[0],SECTION_BOOT, 0);
       }
       break;
+    case FUNC_EVERY_100_MSECOND:
+      ScripterEvery100ms();
+      break;
     case FUNC_EVERY_SECOND:
       ScriptEverySecond();
+      break;
+    case FUNC_SET_POWER:
+    case FUNC_RULES_PROCESS:
+      if (bitRead(Settings.rule_enabled, 0)) Run_Scripter(Settings.rules[0],SECTION_EVENT,0);
       break;
 #ifdef USE_WEBSERVER
 #ifdef USE_RULES_GUI
@@ -938,6 +1026,9 @@ boolean Xdrv10(byte function)
       break;
 #endif  // USE_RULES_GUI
 #endif // USE_WEBSERVER
+    case FUNC_SAVE_BEFORE_RESTART:
+      if (bitRead(Settings.rule_enabled, 0)) Scripter_save_pvars();
+      break;
   }
   return result;
 }
